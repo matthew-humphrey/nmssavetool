@@ -7,7 +7,7 @@ Created by [Matthew Humphrey](https://github.com/matthew-humphrey)
 This is a simple tool to allow decoding, encoding, and convenient editing operations
 on saves for the No Man's Sky game.
 
-Download [precompiled binary](https://www.mediafire.com/?qfgxf7dun3zr6b7)
+Download [precompiled binary](http://www.mediafire.com/file/qfgxf7dun3zr6b7/nmssavetool-1.0.zip)
 
 ##Usage
 
