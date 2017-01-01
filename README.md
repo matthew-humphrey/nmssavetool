@@ -30,6 +30,35 @@ Copyright c  2016
   version    Display version information.
 ```
 
+```
+>nmssavetool.exe help modify
+
+nmssavetool 1.1.0.0
+Copyright c  2016
+
+  -a, --all          Maximize exosuit, multi-tool, ship, and freighter inventory, health, fuel, and
+                     energy levels. Repair all damage.
+
+  -e, --energy       Maximize exosuit, multi-tool, and ship energy and fuel (hyperdrive and launcher)
+                     levels.
+
+  -i, --inventory    Maximize exosuit, multi-tool, ship, and freighter inventory.
+
+  -r, --repair       Repair damage to exosuit, multi-tool, and ship.
+
+  -t, --apply-to     (Default: exosuit multitool ship freighter) What to apply changes to.
+
+  --v1-format        When encrypting, use the old NMS V1 format
+
+  -g, --game-mode    Required. Use saves for which game mode (normal|surival|creative)
+
+  -v, --verbose      Displays additional information during execution.
+
+  --help             Display this help screen.
+
+  --version          Display version information.
+```
+
 ##Supported commands
 
 * decrypt - Decrypt the latest save game for the specified game mode (normal/survival/creative) and write it to a file whose location you specify.
