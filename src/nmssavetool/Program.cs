@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 using clipr;
 using nomanssave;
@@ -14,7 +12,8 @@ namespace nmssavetool
     {
         Decrypt,
         Encrypt,
-        Refill
+        Refill,
+        Repair
     }
 
     public class Options
@@ -28,7 +27,7 @@ namespace nmssavetool
         public GameModes GameMode { get; set; }
 
         // Would like to use Verbs for these, but without support for help on the, the feature is useless.
-        [PositionalArgument(0, Description = "Command to perform (Decrypt|Encrypt|Refill).")]
+        [PositionalArgument(0, Description = "Command to perform (Decrypt|Encrypt|Refill|Repair).")]
         public Commands Command { get; set; }
 
         [NamedArgument('f', "decrypted-file", Description = "Specifies the destination file for decrypt or the source file for encrypt.")]
@@ -46,7 +45,10 @@ namespace nmssavetool
             "^COLD1", "^COLD2", "^COLD3", "^HOT1", "^HOT2", "^HOT3", "^UNW1", "^UNW2", "^UNW3",
 
             // ShipInventory
-            "^SHIPGUN1", "^SHIPSHIELD", "^SHIPJUMP1", "^HYPERDRIVE", "^LAUNCHER", "^SHIPLAS1"
+            "^SHIPGUN1", "^SHIPSHIELD", "^SHIPJUMP1", "^HYPERDRIVE", "^LAUNCHER", "^SHIPLAS1",
+
+            // WeaponInventory
+            "^LASER", "^GRENADE"
         };
 
         private GameSaveDir gsd;
@@ -60,26 +62,30 @@ namespace nmssavetool
 
         public int Run(Options opt)
         {
-            int rc = 0;
+            bool success = false;
 
             switch (opt.Command)
             {
                 case Commands.Decrypt:
-                    rc = ProcessDecrypt(opt);
+                    success = ProcessDecrypt(opt);
                     break;
 
                 case Commands.Encrypt:
-                    rc = ProcessEncrypt(opt);
+                    success = ProcessEncrypt(opt);
                     break;
 
                 case Commands.Refill:
-                    rc = ProcessRefill(opt);
+                    success = ProcessRefill(opt);
+                    break;
+
+                case Commands.Repair:
+                    success = ProcessRepair(opt);
                     break;
             }
 
-            Console.WriteLine(rc == 0 ? "SUCCESS" : "FAILED");
+            Console.WriteLine(success ? "SUCCESS" : "FAILED");
 
-            return rc;
+            return success ? 0 : 1;
         }
 
         static Options ParseArgs(string[] args)
@@ -104,6 +110,7 @@ namespace nmssavetool
                     }
                     break;
                 case Commands.Refill:
+                case Commands.Repair:
                     if (opt.DecryptedFilePath == null)
                     {
                         opt.DecryptedFilePath = Path.GetTempFileName();
@@ -134,52 +141,57 @@ namespace nmssavetool
             }
         }
 
-        private int ProcessRefill(Options opt)
+        private object ReadSaveFile(Options opt)
         {
-            string metadataPath = null;
-            string storagePath = null;
-            uint archiveNumber = 0;
-            ulong profileKey = 0;
+            string metadataPath;
+            string storagePath;
+            uint archiveNumber;
+            ulong profileKey;
 
-            try
+            gsd.FindLatestGameSaveFiles(opt.GameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
+
+            Console.WriteLine("Reading latest {0}-mode save game file from: {1}", opt.GameMode, storagePath);
+
+            string jsonStr = Storage.Read(metadataPath, storagePath, archiveNumber, profileKey);
+
+            return JsonConvert.DeserializeObject(jsonStr);
+        }
+
+        private void WriteSaveFile(Options opt, object json)
+        {
+            string formattedJson = JsonConvert.SerializeObject(json, Formatting.None);
+
+            string metadataPath;
+            string storagePath;
+            uint archiveNumber;
+            ulong profileKey;
+
+            gsd.FindLatestGameSaveFiles(opt.GameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
+
+            Console.WriteLine("Writing latest {0}-mode save game file to: {1}", opt.GameMode, storagePath);
+            using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(formattedJson)))
             {
-                gsd.FindLatestGameSaveFiles(opt.GameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
+                Storage.Write(metadataPath, storagePath, ms, archiveNumber, profileKey, opt.UseOldFormat);
             }
-            catch (Exception x)
-            {
-                Console.WriteLine(x.Message);
-                return 2;
-            }
+        }
 
-            string unformattedJson = null;
-            string formattedJson = null;
-
-            Console.WriteLine("Decrypting latest {0}-mode save game file from: {1}", opt.GameMode, storagePath);
-
-            try
-            {
-                unformattedJson = Storage.Read(metadataPath, storagePath, archiveNumber, profileKey);
-            }
-            catch (Exception x)
-            {
-                Console.WriteLine("Error decrypting save game: {0}", x.Message);
-                return 5;
-            }
-
+        private bool ProcessRefill(Options opt)
+        {
             dynamic json;
             try
             {
-                json = JsonConvert.DeserializeObject(unformattedJson);
+                json = ReadSaveFile(opt);
             }
             catch (Exception x)
             {
-                Console.WriteLine("Error parsing JSON (invalid save?): {0}", x.Message);
-                return 5;
+                Console.WriteLine("Error loading or parsing save file: {0}", x.Message);
+                return false;
             }
 
             // Now iterate through JSON, maxing out technology, Substance, and Product values in Inventory, ShipInventory, and FreighterInventory
             foreach (var slot in json.PlayerStateData.Inventory.Slots)
             {
+                slot.DamageFactor = 0.0f;
                 if (slot.Type.InventoryType == "Product" || slot.Type.InventoryType == "Substance" || (slot.Type.InventoryType == "Technology" && refillableTech.Contains(slot.Id.Value)))
                 {
                     slot.Amount = slot.MaxAmount;
@@ -188,7 +200,17 @@ namespace nmssavetool
 
             foreach (var slot in json.PlayerStateData.ShipInventory.Slots)
             {
+                slot.DamageFactor = 0.0f;
                 if (slot.Type.InventoryType == "Product" || slot.Type.InventoryType == "Substance" || (slot.Type.InventoryType == "Technology" && refillableTech.Contains(slot.Id.Value)))
+                {
+                    slot.Amount = slot.MaxAmount;
+                }
+            }
+
+            foreach (var slot in json.PlayerStateData.WeaponInventory.Slots)
+            {
+                slot.DamageFactor = 0.0f;
+                if (slot.Type.InventoryType == "Technology" && refillableTech.Contains(slot.Id.Value))
                 {
                     slot.Amount = slot.MaxAmount;
                 }
@@ -202,134 +224,122 @@ namespace nmssavetool
                 }
             }
 
+            json.PlayerStateData.Health = 8;
+            json.PlayerStateData.ShipHealth = 8;
+            json.PlayerStateData.Shield = 100;
+            json.PlayerStateData.ShipShield = 200;
+            json.PlayerStateData.Energy = 100;
+
             try
             {
-                formattedJson = JsonConvert.SerializeObject(json, Formatting.None);
+                WriteSaveFile(opt, json);
             }
             catch (Exception x)
             {
-                Console.WriteLine("Error creating modified JSON : {0}", x.Message);
-                return 5;
+                Console.WriteLine("Error storing save file: {0}", x.Message);
+                return false;
             }
 
-            // Write it back
-            Console.WriteLine("Writing back modified save game");
-            try
-            {
-                using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(formattedJson)))
-                {
-                    Storage.Write(metadataPath, storagePath, ms, archiveNumber, profileKey, opt.UseOldFormat);
-                }
-            }
-            catch (Exception x)
-            {
-                Console.WriteLine("Error encrypting save game: {0}", x.Message);
-                return 5;
-            }
-
-            return 0;
+            return true;
         }
 
-        private int ProcessEncrypt(Options opt)
+        private bool ProcessRepair(Options opt)
         {
-            string metadataPath = null;
-            string storagePath = null;
-            uint archiveNumber = 0;
-            ulong profileKey = 0;
-
+            dynamic json;
             try
             {
-                gsd.FindLatestGameSaveFiles(opt.GameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
+                json = ReadSaveFile(opt);
             }
             catch (Exception x)
             {
-                Console.WriteLine(x.Message);
-                return 2;
+                Console.WriteLine("Error loading or parsing save file: {0}", x.Message);
+                return false;
             }
 
-            string unformattedJson = null;
-            string formattedJson = null;
+            // Now iterate through JSON, maxing out technology, Substance, and Product values in Inventory, ShipInventory, and FreighterInventory
+            foreach (var slot in json.PlayerStateData.Inventory.Slots)
+            {
+                slot.DamageFactor = 0.0f;
+            }
 
-            Console.WriteLine("Reading JSON from: {0}", opt.DecryptedFilePath);
-            Console.WriteLine("Encrypting to latest {0}-mode save game file: {1}", opt.GameMode, storagePath);
+            foreach (var slot in json.PlayerStateData.ShipInventory.Slots)
+            {
+                slot.DamageFactor = 0.0f;
+            }
+
+            try
+            {
+                WriteSaveFile(opt, json);
+            }
+            catch (Exception x)
+            {
+                Console.WriteLine("Error storing save file: {0}", x.Message);
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool ProcessEncrypt(Options opt)
+        {
+            Console.WriteLine("Reading JSON save game data from: {0}", opt.DecryptedFilePath);
+            string unformattedJson;
             try
             {
                 unformattedJson = File.ReadAllText(opt.DecryptedFilePath);
             }
             catch (IOException x)
             {
-                Console.WriteLine("Error reading JSON: {0}", x.Message);
-                return 4;
+                Console.WriteLine("Error reading JSON save game file: {0}", x.Message);
+                return false;
             }
 
-            // Not strictly necessary, but it's a good check for validity, and it compacts the file back down
+            object json;
             try
             {
-                formattedJson = JsonConvert.SerializeObject(JsonConvert.DeserializeObject(unformattedJson), Formatting.None);
+                json = JsonConvert.DeserializeObject(unformattedJson);
             }
             catch (Exception x)
             {
-                Console.WriteLine("Error parsing JSON (check your edits): {0}", x.Message);
-                return 4;
+                Console.WriteLine("Error parsing save game file: {0}", x.Message);
+                return false;
             }
 
             try
             {
-                using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(formattedJson)))
-                {
-                    Storage.Write(metadataPath, storagePath, ms, archiveNumber, profileKey, opt.UseOldFormat);
-                }
+                WriteSaveFile(opt, json);
             }
             catch (Exception x)
             {
-                Console.WriteLine("Error encrypting save game: {0}", x.Message);
-                return 4;
+                Console.WriteLine("Error storing save file: {0}", x.Message);
+                return false;
             }
 
-            return 0;
+            return true;
         }
 
-        private int ProcessDecrypt(Options opt)
+        private bool ProcessDecrypt(Options opt)
         {
-            string metadataPath = null;
-            string storagePath = null;
-            uint archiveNumber = 0;
-            ulong profileKey = 0;
-
+            object json;
             try
             {
-                gsd.FindLatestGameSaveFiles(opt.GameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
+                json = ReadSaveFile(opt);
             }
             catch (Exception x)
             {
-                Console.WriteLine(x.Message);
-                return 2;
+                Console.WriteLine("Error loading or parsing save file: {0}", x.Message);
+                return false;
             }
 
-            string unformattedJson = null;
-            string formattedJson = null;
-
-            Console.WriteLine("Decrypting latest {0}-mode save game file from: {1}", opt.GameMode, storagePath);
-            Console.WriteLine("Writing formatted JSON to: {0}", opt.DecryptedFilePath);
-
+            string formattedJson;
             try
             {
-                unformattedJson = Storage.Read(metadataPath, storagePath, archiveNumber, profileKey);
-            }
-            catch (Exception x)
-            {
-                Console.WriteLine("Error decrypting save game: {0}", x.Message);
-                return 3;
-            }
-
-            try
-            {
-                formattedJson = JsonConvert.SerializeObject(JsonConvert.DeserializeObject(unformattedJson), Formatting.Indented);
+                formattedJson = JsonConvert.SerializeObject(json, Formatting.Indented);
             }
             catch (Exception x)
             {
                 Console.WriteLine("Error formatting JSON (invalid save?): {0}", x.Message);
-                return 3;
+                return false;
             }
 
             try
@@ -339,10 +349,10 @@ namespace nmssavetool
             catch (Exception x)
             {
                 Console.WriteLine("Error writing decrypted JSON: {0}", x.Message);
-                return 3;
+                return false;
             }
 
-            return 0;
+            return true;
         }
     }
 }

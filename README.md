@@ -31,10 +31,17 @@ Optional Arguments:
 
 * Decrypt - Decrypt the latest save game for the specified game mode (normal/survival/creative) and write it to a file whose location you specify.
 * Encrypt - Encrypt the file you specify and write it to the latest save game slot for the specified game mode.
-* Refill - Edit the latest game save slot for the specified game mode to maximize inventory and technology levels for suit, ship, and freighter.
+* Refill - Edit the latest game save slot for the specified game mode to maximize inventory and technology levels for suit, ship, and freighter, and to repair any damage.
+* Repair - Repairs any damage to Exosuit or Ship.
 
 ##Changelog
 
 ###2016-12-30 1.0.0.0
 
 * Initial release
+
+###2016-12-30 1.1.0.0
+
+* Added damage repair to Refill Command
+* Added Repair command
+* Minor refactoring to reduce duplicated code
