@@ -7,7 +7,7 @@ Created by [Matthew Humphrey](https://github.com/matthew-humphrey)
 This is a simple tool to allow decoding, encoding, and convenient editing operations
 on saves for the No Man's Sky game.
 
-Download [precompiled binary](http://www.mediafire.com/file/qfgxf7dun3zr6b7/nmssavetool-1.1.zip)
+Download [precompiled binary](http://www.mediafire.com/file/ezm6yt46yzelu7y/nmssavetool-1.1.zip)
 
 ##Usage
 
@@ -28,6 +28,35 @@ Copyright c  2016
   help       Display more information on a specific command.
 
   version    Display version information.
+```
+
+```
+>nmssavetool.exe help modify
+
+nmssavetool 1.1.0.0
+Copyright c  2016
+
+  -a, --all          Maximize exosuit, multi-tool, ship, and freighter inventory, health, fuel, and
+                     energy levels. Repair all damage.
+
+  -e, --energy       Maximize exosuit, multi-tool, and ship energy and fuel (hyperdrive and launcher)
+                     levels.
+
+  -i, --inventory    Maximize exosuit, multi-tool, ship, and freighter inventory.
+
+  -r, --repair       Repair damage to exosuit, multi-tool, and ship.
+
+  -t, --apply-to     (Default: exosuit multitool ship freighter) What to apply changes to.
+
+  --v1-format        When encrypting, use the old NMS V1 format
+
+  -g, --game-mode    Required. Use saves for which game mode (normal|surival|creative)
+
+  -v, --verbose      Displays additional information during execution.
+
+  --help             Display this help screen.
+
+  --version          Display version information.
 ```
 
 ##Supported commands
