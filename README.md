@@ -30,6 +30,46 @@ Copyright c  2016
   version    Display version information.
 ```
 
+###decrypt
+```
+>nmssavetool.exe help decrypt
+
+nmssavetool 1.1.0.0
+Copyright c  2016
+
+  -o, --output       Specifies the file to which the decrypted, formatted game save will be written.
+
+  -g, --game-mode    Required. Use saves for which game mode (normal|surival|creative)
+
+  -v, --verbose      Displays additional information during execution.
+
+  --help             Display this help screen.
+
+  --version          Display version information.
+```
+
+###encrypt
+```
+>nmssavetool.exe help encrypt
+
+nmssavetool 1.1.0.0
+Copyright c  2016
+
+  -i, --input        Specifies the JSON input file which will be encrypted and written to the latest
+                     game save slot.
+
+  --v1-format        When encrypting, use the old NMS V1 format
+
+  -g, --game-mode    Required. Use saves for which game mode (normal|surival|creative)
+
+  -v, --verbose      Displays additional information during execution.
+
+  --help             Display this help screen.
+
+  --version          Display version information.```
+```
+
+###modify
 ```
 >nmssavetool.exe help modify
 
