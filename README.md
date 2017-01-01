@@ -7,32 +7,36 @@ Created by [Matthew Humphrey](https://github.com/matthew-humphrey)
 This is a simple tool to allow decoding, encoding, and convenient editing operations
 on saves for the No Man's Sky game.
 
-Download [precompiled binary](http://www.mediafire.com/file/qfgxf7dun3zr6b7/nmssavetool-1.0.zip)
+Download [precompiled binary](http://www.mediafire.com/file/qfgxf7dun3zr6b7/nmssavetool-1.1.zip)
 
 ##Usage
 
-Run "nmssavetool -h" for help.
+Run "nmssavetool help" for help.
 
 ```
-nmssavetool [ -h|--help ] [ --version ] [ -g|--game-mode G ] [ -f|--decrypted-file F ] [ --v1-format  ] COMMAND {Decrypt|Encrypt|Refill}
+> nmssavetool help
 
-Positional Arguments:
- Command               Command to perform (Decrypt|Encrypt|Refill).
+nmssavetool 1.1.0.0
+Copyright c  2016
 
-Optional Arguments:
- --v1-format           When encrypting a save file, use the old NMS V1 format
- -f, --decrypted-file  Specifies the destination file for decrypt or the source file for encrypt.
- -g, --game-mode       Use saves for which game mode (Normal|Surival|Creative)
- -h, --help            Display this help document.
- --version             Displays the version of the current executable.
+  decrypt    Decrypt the latest game save slot and write it to a formatted JSON file.
+
+  encrypt    Encrypt a JSON file and write it to the latest game save slot.
+
+  modify     Modify one or more attributes of a game save.
+
+  help       Display more information on a specific command.
+
+  version    Display version information.
 ```
 
 ##Supported commands
 
-* Decrypt - Decrypt the latest save game for the specified game mode (normal/survival/creative) and write it to a file whose location you specify.
-* Encrypt - Encrypt the file you specify and write it to the latest save game slot for the specified game mode.
-* Refill - Edit the latest game save slot for the specified game mode to maximize inventory and technology levels for suit, ship, and freighter, and to repair any damage.
-* Repair - Repairs any damage to Exosuit or Ship.
+* decrypt - Decrypt the latest save game for the specified game mode (normal/survival/creative) and write it to a file whose location you specify.
+* encrypt - Encrypt the file you specify and write it to the latest save game slot for the specified game mode.
+* modify - Edit the latest game save slot for the specified game mode to repair damage, maximize energy levels, and/or maximize inventory levels.
+* help - Provide help on command-line syntax for any command.
+* version - Displays the program's version information.
 
 ##Changelog
 
@@ -43,5 +47,6 @@ Optional Arguments:
 ###2016-12-30 1.1.0.0
 
 * Added damage repair to Refill Command
-* Added Repair command
+* Switched to a new command-line parsing library
+* Moved to a verb-style command line interface, and provide more fine-grained control over modifications.
 * Minor refactoring to reduce duplicated code

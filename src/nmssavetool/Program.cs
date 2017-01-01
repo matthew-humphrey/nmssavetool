@@ -2,38 +2,68 @@
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
-using clipr;
+using System.Linq;
 using nomanssave;
 using Newtonsoft.Json;
+using CommandLine;
+
 
 namespace nmssavetool
 {
-    public enum Commands
+    public enum TechGrp
     {
-        Decrypt,
-        Encrypt,
-        Refill,
-        Repair
+        exosuit,
+        multitool,
+        ship,
+        freighter
     }
 
-    public class Options
+    public class CommonOptions
     {
-        public Options()
-        {
-            UseOldFormat = false;
-        }
-
-        [NamedArgument('g', "game-mode", Required = true, Description = "Use saves for which game mode (Normal|Surival|Creative)" )]
+        [Option('g', "game-mode", Required = true, HelpText = "Use saves for which game mode (normal|surival|creative)")]
         public GameModes GameMode { get; set; }
 
-        // Would like to use Verbs for these, but without support for help on the, the feature is useless.
-        [PositionalArgument(0, Description = "Command to perform (Decrypt|Encrypt|Refill|Repair).")]
-        public Commands Command { get; set; }
+        [Option('v', "verbose", HelpText = "Displays additional information during execution.")]
+        public bool Verbose { get; set; }
+    }
 
-        [NamedArgument('f', "decrypted-file", Description = "Specifies the destination file for decrypt or the source file for encrypt.")]
-        public string DecryptedFilePath { get; set; }
+    [Verb("decrypt", HelpText = "Decrypt the latest game save slot and write it to a formatted JSON file.")]
+    public class DecryptOptions : CommonOptions
+    {
+        [Option('o', "output", HelpText = "Specifies the file to which the decrypted, formatted game save will be written.")]
+        public string OutputPath { get; set; }
+    }
 
-        [NamedArgument("v1-format", Description = "When encrypting a save file, use the old NMS V1 format")]
+    [Verb("encrypt", HelpText = "Encrypt a JSON file and write it to the latest game save slot.")]
+    public class EncryptOptions : CommonOptions
+    {
+        [Option('i', "input", HelpText = "Specifies the JSON input file which will be encrypted and written to the latest game save slot.")]
+        public string InputPath { get; set; }
+
+        [Option("v1-format", HelpText = "When encrypting, use the old NMS V1 format")]
+        public bool UseOldFormat { get; set; }
+    }
+
+    [Verb("modify", HelpText = "Modify one or more attributes of a game save.")]
+    public class ModifyOptions : CommonOptions
+    {
+        [Option('a', "all", HelpText = "Maximize exosuit, multi-tool, ship, and freighter inventory, health, fuel, and energy levels. Repair all damage.")]
+        public bool Everything { get; set; }
+
+        [Option('e', "energy", HelpText = "Maximize exosuit, multi-tool, and ship energy and fuel (hyperdrive and launcher) levels.")]
+        public bool Energy { get; set; }
+
+        [Option('i', "inventory", HelpText = "Maximize exosuit, multi-tool, ship, and freighter inventory.")]
+        public bool Inventory { get; set; }
+
+        [Option('r', "repair", HelpText = "Repair damage to exosuit, multi-tool, and ship.")]
+        public bool Repair { get; set; }
+
+        [Option('t', "apply-to", Separator = '+', Max = 4, Default = new TechGrp[] { TechGrp.exosuit, TechGrp.multitool, TechGrp.ship, TechGrp.freighter }, 
+            HelpText = "What to apply changes to.")]
+        public IEnumerable<TechGrp> TechGroups { get; set; }
+
+        [Option("v1-format", HelpText = "When encrypting, use the old NMS V1 format")]
         public bool UseOldFormat { get; set; }
     }
 
@@ -54,110 +84,299 @@ namespace nmssavetool
         private GameSaveDir gsd;
         private HashSet<string> refillableTech;
 
-        Program()
-        {
-            this.gsd = new GameSaveDir();
-            this.refillableTech = new HashSet<string>(REFILLABLE_TECH);
-        }
-
-        public int Run(Options opt)
-        {
-            bool success = false;
-
-            switch (opt.Command)
-            {
-                case Commands.Decrypt:
-                    success = ProcessDecrypt(opt);
-                    break;
-
-                case Commands.Encrypt:
-                    success = ProcessEncrypt(opt);
-                    break;
-
-                case Commands.Refill:
-                    success = ProcessRefill(opt);
-                    break;
-
-                case Commands.Repair:
-                    success = ProcessRepair(opt);
-                    break;
-            }
-
-            Console.WriteLine(success ? "SUCCESS" : "FAILED");
-
-            return success ? 0 : 1;
-        }
-
-        static Options ParseArgs(string[] args)
-        {
-            // Started out down the path of using this argument parser, only to find out that it has a lot of missing functionality, and hasn't been updated since 2015
-            var opt = CliParser.StrictParse<Options>(args);
-
-            switch (opt.Command)
-            {
-                case Commands.Decrypt:
-                    if (opt.DecryptedFilePath == null)
-                    {
-                        Console.WriteLine("The Decrypt command requires an output file be specified with the (-d|--decrypted-file) parameter");
-                        Environment.Exit(1);
-                    }
-                    break;
-                case Commands.Encrypt:
-                    if (opt.DecryptedFilePath == null || !File.Exists(opt.DecryptedFilePath))
-                    {
-                        Console.WriteLine("The Encrypt command requires an (existing) input file be specified with the (-d|--decrypted-file) parameter");
-                        Environment.Exit(1);
-                    }
-                    break;
-                case Commands.Refill:
-                case Commands.Repair:
-                    if (opt.DecryptedFilePath == null)
-                    {
-                        opt.DecryptedFilePath = Path.GetTempFileName();
-                    }
-                    break;
-                default:
-                    throw new InvalidOperationException();
-            }
-
-            return opt;
-        }
-
         static void Main(string[] args)
-        {
-            var opt = ParseArgs(args);
-
+        {            
             Program program = null;
             try
             {
                 program = new Program();
-                int rc = program.Run(opt);
-                Environment.Exit(rc);
+                bool success = program.Run(args);
+                if (success)
+                {
+                    Console.WriteLine("Success");
+                }
+                Environment.Exit(success ? 0 : 1);
             }
             catch (Exception x)
             {
-                Console.WriteLine(x.Message);
-                Environment.Exit(2);
+                Console.Error.WriteLine(x.Message);
+                Environment.Exit(-1);
             }
         }
 
-        private object ReadSaveFile(Options opt)
+        Program()
+        {
+            this.gsd = new GameSaveDir();
+            this.refillableTech = new HashSet<string>(REFILLABLE_TECH);
+            LogWriter = Console.Out;
+        }
+
+        public TextWriter LogWriter { get; set; }
+
+        public bool Verbose { get; set; }
+
+
+        public bool Run(IEnumerable<string> args)
+        {
+            var result = CommandLine.Parser.Default.ParseArguments<DecryptOptions, EncryptOptions, ModifyOptions>(args);
+
+            bool success = result.MapResult(
+                (DecryptOptions opt) => RunDecrypt(opt),
+                (EncryptOptions opt) => RunEncrypt(opt),
+                (ModifyOptions opt) => RunModify(opt),
+                _ => false);
+
+            return success;
+        }
+
+        private void DoCommon(CommonOptions opt)
+        {
+            if (!Verbose)
+            {
+                Verbose = opt.Verbose;
+            }
+        }
+
+        private bool RunDecrypt(DecryptOptions opt)
+        {
+            DoCommon(opt);
+
+            object json;
+            try
+            {
+                json = ReadLatestSaveFile(opt.GameMode);
+            }
+            catch (Exception x)
+            {
+                LogError("Error loading or parsing save file: {0}", x.Message);
+                return false;
+            }
+
+            LogVerbose("Parsing and formatting save game JSON");
+            string formattedJson;
+            try
+            {
+                formattedJson = JsonConvert.SerializeObject(json, Formatting.Indented);
+            }
+            catch (Exception x)
+            {
+                LogError("Error formatting JSON (invalid save?): {0}", x.Message);
+                return false;
+            }
+
+            LogVerbose("Writing formatted JSON to: {0}", opt.OutputPath);
+            try
+            {
+                File.WriteAllText(opt.OutputPath, formattedJson);
+            }
+            catch (Exception x)
+            {
+                LogError("Error writing decrypted JSON: {0}", x.Message);
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool RunEncrypt(EncryptOptions opt)
+        {
+            DoCommon(opt);
+
+            LogVerbose("Reading JSON save game data from: {0}", opt.InputPath);
+            string unformattedJson;
+            try
+            {
+                unformattedJson = File.ReadAllText(opt.InputPath);
+            }
+            catch (IOException x)
+            {
+                LogError("Error reading JSON save game file: {0}", x.Message);
+                return false;
+            }
+
+            LogVerbose("Validating (parsing) JSON save game data");
+            object json;
+            try
+            {
+                json = JsonConvert.DeserializeObject(unformattedJson);
+            }
+            catch (Exception x)
+            {
+                LogError("Error parsing save game file: {0}", x.Message);
+                return false;
+            }
+
+            try
+            {
+                WriteLatestSaveFile(opt.GameMode, json, opt.UseOldFormat);
+            }
+            catch (Exception x)
+            {
+                LogError("Error storing save file: {0}", x.Message);
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool RunModify(ModifyOptions opt)
+        {
+            DoCommon(opt);
+
+            dynamic json;
+            try
+            {
+                json = ReadLatestSaveFile(opt.GameMode);
+            }
+            catch (Exception x)
+            {
+                Console.WriteLine("Error loading or parsing save file: {0}", x.Message);
+                return false;
+            }
+
+            // Now iterate through JSON, maxing out technology, Substance, and Product values in Inventory, ShipInventory, and FreighterInventory
+
+            // Exosuit
+            if (opt.TechGroups.Contains(TechGrp.exosuit))
+            {
+                LogVerbose("Updating Exosuit");
+                if (opt.Energy || opt.Everything)
+                {
+                    json.PlayerStateData.Health = 8;
+                    json.PlayerStateData.Energy = 100;
+                    json.PlayerStateData.Shield = 100;
+                }
+
+                foreach (var slot in json.PlayerStateData.Inventory.Slots)
+                {
+                    if (opt.Repair || opt.Everything)
+                    {
+                        slot.DamageFactor = 0.0f;
+                    }
+
+                    if ((opt.Energy || opt.Everything) && slot.Type.InventoryType == "Technology" && refillableTech.Contains(slot.Id.Value))
+                    {
+                        slot.Amount = slot.MaxAmount;
+                    }
+
+                    if ((opt.Inventory || opt.Everything) && (slot.Type.InventoryType == "Product" || slot.Type.InventoryType == "Substance"))
+                    {
+                        slot.Amount = slot.MaxAmount;
+                    }
+                }
+            }
+
+            // Multitool (Weapon)
+            if (opt.TechGroups.Contains(TechGrp.multitool))
+            {
+                LogVerbose("Updating Multitool");
+                foreach (var slot in json.PlayerStateData.WeaponInventory.Slots)
+                {
+                    if (opt.Repair || opt.Everything)
+                    {
+                        slot.DamageFactor = 0.0f;
+                    }
+
+                    if ((opt.Energy || opt.Everything) && refillableTech.Contains(slot.Id.Value))
+                    {
+                        slot.Amount = slot.MaxAmount;
+                    }
+                }
+            }
+
+            if (opt.TechGroups.Contains(TechGrp.ship))
+            {
+                LogVerbose("Updating Ship");
+                if (opt.Energy || opt.Everything)
+                {
+                    json.PlayerStateData.ShipHealth = 8;
+                    json.PlayerStateData.ShipShield = 200;
+                }
+
+                foreach (var slot in json.PlayerStateData.ShipInventory.Slots)
+                {
+                    if (opt.Repair || opt.Everything)
+                    {
+                        slot.DamageFactor = 0.0f;
+                    }
+
+                    if ((opt.Energy || opt.Everything) && slot.Type.InventoryType == "Technology" && refillableTech.Contains(slot.Id.Value))
+                    {
+                        slot.Amount = slot.MaxAmount;
+                    }
+
+                    if ((opt.Inventory || opt.Everything) && (slot.Type.InventoryType == "Product" || slot.Type.InventoryType == "Substance"))
+                    {
+                        slot.Amount = slot.MaxAmount;
+                    }
+                }
+            }
+
+
+            if (opt.TechGroups.Contains(TechGrp.freighter))
+            {
+                LogVerbose("Updating Freighter");
+                foreach (var slot in json.PlayerStateData.FreighterInventory.Slots)
+                {
+                    if ( (opt.Inventory || opt.Everything) &&
+                        // Leave this next line in as protection against future version of NMS allowing other things in Freighter
+                        (slot.Type.InventoryType == "Product" || slot.Type.InventoryType == "Substance") 
+                       )
+                    {
+                        slot.Amount = slot.MaxAmount;
+                    }
+                }
+            }
+
+            try
+            {
+                WriteLatestSaveFile(opt.GameMode, json, opt.UseOldFormat);
+            }
+            catch (Exception x)
+            {
+                Console.WriteLine("Error storing save file: {0}", x.Message);
+                return false;
+            }
+
+            return true;
+        }
+
+        private void Log(string format, params object[] arg)
+        {
+            LogWriter.WriteLine(format, arg);
+        }
+
+        private void LogVerbose(string format, params object[] arg)
+        {
+            if (Verbose)
+            {
+                LogWriter.WriteLine(format, arg);
+            }
+        }
+
+        private void LogError(string format, params object[] arg)
+        {
+            Console.Error.WriteLine(format, arg);
+        }
+
+        // TODO: Move all save file handling into a separate class
+        private object ReadLatestSaveFile(GameModes gameMode)
         {
             string metadataPath;
             string storagePath;
             uint archiveNumber;
             ulong profileKey;
 
-            gsd.FindLatestGameSaveFiles(opt.GameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
+            gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
 
-            Console.WriteLine("Reading latest {0}-mode save game file from: {1}", opt.GameMode, storagePath);
+            LogVerbose("Reading latest {0}-mode save game file from: {1}", gameMode, storagePath);
 
             string jsonStr = Storage.Read(metadataPath, storagePath, archiveNumber, profileKey);
 
             return JsonConvert.DeserializeObject(jsonStr);
         }
 
-        private void WriteSaveFile(Options opt, object json)
+        private void WriteLatestSaveFile(GameModes gameMode, object json, bool useOldFormat)
         {
             string formattedJson = JsonConvert.SerializeObject(json, Formatting.None);
 
@@ -166,193 +385,13 @@ namespace nmssavetool
             uint archiveNumber;
             ulong profileKey;
 
-            gsd.FindLatestGameSaveFiles(opt.GameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
+            gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
 
-            Console.WriteLine("Writing latest {0}-mode save game file to: {1}", opt.GameMode, storagePath);
+            LogVerbose("Writing latest {0}-mode save game file to: {1}", gameMode, storagePath);
             using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(formattedJson)))
             {
-                Storage.Write(metadataPath, storagePath, ms, archiveNumber, profileKey, opt.UseOldFormat);
+                Storage.Write(metadataPath, storagePath, ms, archiveNumber, profileKey, useOldFormat);
             }
-        }
-
-        private bool ProcessRefill(Options opt)
-        {
-            dynamic json;
-            try
-            {
-                json = ReadSaveFile(opt);
-            }
-            catch (Exception x)
-            {
-                Console.WriteLine("Error loading or parsing save file: {0}", x.Message);
-                return false;
-            }
-
-            // Now iterate through JSON, maxing out technology, Substance, and Product values in Inventory, ShipInventory, and FreighterInventory
-            foreach (var slot in json.PlayerStateData.Inventory.Slots)
-            {
-                slot.DamageFactor = 0.0f;
-                if (slot.Type.InventoryType == "Product" || slot.Type.InventoryType == "Substance" || (slot.Type.InventoryType == "Technology" && refillableTech.Contains(slot.Id.Value)))
-                {
-                    slot.Amount = slot.MaxAmount;
-                }
-            }
-
-            foreach (var slot in json.PlayerStateData.ShipInventory.Slots)
-            {
-                slot.DamageFactor = 0.0f;
-                if (slot.Type.InventoryType == "Product" || slot.Type.InventoryType == "Substance" || (slot.Type.InventoryType == "Technology" && refillableTech.Contains(slot.Id.Value)))
-                {
-                    slot.Amount = slot.MaxAmount;
-                }
-            }
-
-            foreach (var slot in json.PlayerStateData.WeaponInventory.Slots)
-            {
-                slot.DamageFactor = 0.0f;
-                if (slot.Type.InventoryType == "Technology" && refillableTech.Contains(slot.Id.Value))
-                {
-                    slot.Amount = slot.MaxAmount;
-                }
-            }
-
-            foreach (var slot in json.PlayerStateData.FreighterInventory.Slots)
-            {
-                if (slot.Type.InventoryType == "Product" || slot.Type.InventoryType == "Substance")
-                {
-                    slot.Amount = slot.MaxAmount;
-                }
-            }
-
-            json.PlayerStateData.Health = 8;
-            json.PlayerStateData.ShipHealth = 8;
-            json.PlayerStateData.Shield = 100;
-            json.PlayerStateData.ShipShield = 200;
-            json.PlayerStateData.Energy = 100;
-
-            try
-            {
-                WriteSaveFile(opt, json);
-            }
-            catch (Exception x)
-            {
-                Console.WriteLine("Error storing save file: {0}", x.Message);
-                return false;
-            }
-
-            return true;
-        }
-
-        private bool ProcessRepair(Options opt)
-        {
-            dynamic json;
-            try
-            {
-                json = ReadSaveFile(opt);
-            }
-            catch (Exception x)
-            {
-                Console.WriteLine("Error loading or parsing save file: {0}", x.Message);
-                return false;
-            }
-
-            // Now iterate through JSON, maxing out technology, Substance, and Product values in Inventory, ShipInventory, and FreighterInventory
-            foreach (var slot in json.PlayerStateData.Inventory.Slots)
-            {
-                slot.DamageFactor = 0.0f;
-            }
-
-            foreach (var slot in json.PlayerStateData.ShipInventory.Slots)
-            {
-                slot.DamageFactor = 0.0f;
-            }
-
-            try
-            {
-                WriteSaveFile(opt, json);
-            }
-            catch (Exception x)
-            {
-                Console.WriteLine("Error storing save file: {0}", x.Message);
-                return false;
-            }
-
-            return true;
-        }
-
-        private bool ProcessEncrypt(Options opt)
-        {
-            Console.WriteLine("Reading JSON save game data from: {0}", opt.DecryptedFilePath);
-            string unformattedJson;
-            try
-            {
-                unformattedJson = File.ReadAllText(opt.DecryptedFilePath);
-            }
-            catch (IOException x)
-            {
-                Console.WriteLine("Error reading JSON save game file: {0}", x.Message);
-                return false;
-            }
-
-            object json;
-            try
-            {
-                json = JsonConvert.DeserializeObject(unformattedJson);
-            }
-            catch (Exception x)
-            {
-                Console.WriteLine("Error parsing save game file: {0}", x.Message);
-                return false;
-            }
-
-            try
-            {
-                WriteSaveFile(opt, json);
-            }
-            catch (Exception x)
-            {
-                Console.WriteLine("Error storing save file: {0}", x.Message);
-                return false;
-            }
-
-            return true;
-        }
-
-        private bool ProcessDecrypt(Options opt)
-        {
-            object json;
-            try
-            {
-                json = ReadSaveFile(opt);
-            }
-            catch (Exception x)
-            {
-                Console.WriteLine("Error loading or parsing save file: {0}", x.Message);
-                return false;
-            }
-
-            string formattedJson;
-            try
-            {
-                formattedJson = JsonConvert.SerializeObject(json, Formatting.Indented);
-            }
-            catch (Exception x)
-            {
-                Console.WriteLine("Error formatting JSON (invalid save?): {0}", x.Message);
-                return false;
-            }
-
-            try
-            {
-                File.WriteAllText(opt.DecryptedFilePath, formattedJson);
-            }
-            catch (Exception x)
-            {
-                Console.WriteLine("Error writing decrypted JSON: {0}", x.Message);
-                return false;
-            }
-
-            return true;
         }
     }
 }

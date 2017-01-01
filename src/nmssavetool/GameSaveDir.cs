@@ -10,9 +10,9 @@ namespace nmssavetool
 {
     public enum GameModes
     {
-        Normal,
-        Survival,
-        Creative
+        normal,
+        survival,
+        creative
     }
 
 
@@ -117,13 +117,13 @@ namespace nmssavetool
 
             switch (gameMode)
             {
-                case GameModes.Normal:
+                case GameModes.normal:
                     archiveNumbers = new uint[] { 0, 1, 2 };
                     break;
-                case GameModes.Survival:
+                case GameModes.survival:
                     archiveNumbers = new uint[] { 3, 4, 5 };
                     break;
-                case GameModes.Creative:
+                case GameModes.creative:
                     archiveNumbers = new uint[] { 6, 7, 8 };
                     break;
                 default:
