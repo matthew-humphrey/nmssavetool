@@ -21,7 +21,7 @@ namespace nmssavetool
 
     public class CommonOptions
     {
-        [Option('g', "game-mode", Required = true, HelpText = "Use saves for which game mode (normal|surival|creative)")]
+        [Option('g', "game-mode", Required = true, HelpText = "Use saves for which game mode (normal|survival|creative)")]
         public GameModes GameMode { get; set; }
 
         [Option('v', "verbose", HelpText = "Displays additional information during execution.")]
