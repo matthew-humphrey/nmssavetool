@@ -23,12 +23,20 @@ Copyright c  2016
 
   encrypt    Encrypt a JSON file and write it to the latest game save slot.
 
-  modify     Modify one or more attributes of a game save.
+  refresh    Refresh, repair, or refill exosuit, multitool, ship, or freighter inventory.
 
   help       Display more information on a specific command.
 
   version    Display version information.
 ```
+
+Supported commands
+
+* decrypt - Decrypt the latest save game for the specified game mode (normal/survival/creative) and write it to a file whose location you specify.
+* encrypt - Encrypt the file you specify and write it to the latest save game slot for the specified game mode.
+* refresh - Edit the latest game save slot for the specified game mode to repair damage, maximize energy levels, and/or maximize inventory levels.
+* help - Provide help on command-line syntax for any command.
+* version - Displays the program's version information.
 
 ###decrypt
 ```
@@ -60,6 +68,8 @@ Copyright c  2016
 
   --v1-format        When encrypting, use the old NMS V1 format
 
+  -b, --backup-dir   If provided, will back up game saves to the specified directory.
+
   -g, --game-mode    Required. Use saves for which game mode (normal|surival|creative)
 
   -v, --verbose      Displays additional information during execution.
@@ -69,43 +79,37 @@ Copyright c  2016
   --version          Display version information.```
 ```
 
-###modify
+###refresh
 ```
->nmssavetool.exe help modify
+>nmssavetool.exe help refresh
 
 nmssavetool 1.1.0.0
 Copyright c  2016
 
-  -a, --all          Maximize exosuit, multi-tool, ship, and freighter inventory, health, fuel, and
-                     energy levels. Repair all damage.
+  -a, --all           Maximize exosuit, multi-tool, ship, and freighter inventory, health, fuel, and
+                      energy levels. Repair all damage.
 
-  -e, --energy       Maximize exosuit, multi-tool, and ship energy and fuel (hyperdrive and launcher)
-                     levels.
+  -e, --energy        Maximize exosuit, multi-tool, and ship energy and fuel (hyperdrive and launcher)
+                      levels.
 
-  -i, --inventory    Maximize exosuit, multi-tool, ship, and freighter inventory.
+  -i, --inventory     Maximize exosuit, multi-tool, ship, and freighter inventory.
 
-  -r, --repair       Repair damage to exosuit, multi-tool, and ship.
+  -r, --repair        Repair damage to exosuit, multi-tool, and ship.
 
-  -t, --apply-to     (Default: exosuit multitool ship freighter) What to apply changes to.
+  -t, --apply-to      (Default: exosuit multitool ship freighter) What to apply changes to.
 
-  --v1-format        When encrypting, use the old NMS V1 format
+  --v1-format         When encrypting, use the old NMS V1 format
 
-  -g, --game-mode    Required. Use saves for which game mode (normal|surival|creative)
+  -b, --backup-dir    If provided, will back up game saves to the specified directory.
 
-  -v, --verbose      Displays additional information during execution.
+  -g, --game-mode     Required. Use saves for which game mode (normal|surival|creative)
 
-  --help             Display this help screen.
+  -v, --verbose       Displays additional information during execution.
 
-  --version          Display version information.
+  --help              Display this help screen.
+
+  --version           Display version information.
 ```
-
-##Supported commands
-
-* decrypt - Decrypt the latest save game for the specified game mode (normal/survival/creative) and write it to a file whose location you specify.
-* encrypt - Encrypt the file you specify and write it to the latest save game slot for the specified game mode.
-* modify - Edit the latest game save slot for the specified game mode to repair damage, maximize energy levels, and/or maximize inventory levels.
-* help - Provide help on command-line syntax for any command.
-* version - Displays the program's version information.
 
 ##Changelog
 
@@ -113,9 +117,14 @@ Copyright c  2016
 
 * Initial release
 
-###2016-12-30 1.1.0.0
+###2016-12-31 1.1.0.0
 
 * Added damage repair to Refill Command
 * Switched to a new command-line parsing library
 * Moved to a verb-style command line interface, and provide more fine-grained control over modifications.
 * Minor refactoring to reduce duplicated code
+
+###2017-01-01 1.2.0.0
+
+* Renamed "modify" command to "refresh" in preparation for future new feature
+* Added backup feature

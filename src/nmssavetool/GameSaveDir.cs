@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.IO.Compression;
 
 namespace nmssavetool
 {
@@ -150,6 +148,28 @@ namespace nmssavetool
             {
                 throw new FileNotFoundException(string.Format("No save games found for game mode {0}", gameMode)); 
             }
+        }
+
+        public void Backup(string backupDir, out string archivePath, out bool backupCreated)
+        {
+            string archiveDirName = "nmssavetool-backup-" + FindMostRecentSaveDateTime().ToString("yyyyMMdd-HHmmss") + ".zip";
+            archivePath = Path.Combine(backupDir, archiveDirName);            
+
+            if (File.Exists(archivePath))
+            {
+                backupCreated = false;
+            }
+            else
+            {
+                ZipFile.CreateFromDirectory(_savePath, archivePath);
+                backupCreated = true;
+            }            
+        }
+
+        private DateTime FindMostRecentSaveDateTime()
+        {
+            var saveFiles = Directory.EnumerateFiles(_savePath, "*.hg");
+            return (from saveFile in saveFiles select File.GetLastWriteTime(saveFile)).Max();
         }
 
     }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 using System.Linq;
+using System.IO.Compression;
 using nomanssave;
 using Newtonsoft.Json;
 using CommandLine;
@@ -42,10 +43,13 @@ namespace nmssavetool
 
         [Option("v1-format", HelpText = "When encrypting, use the old NMS V1 format")]
         public bool UseOldFormat { get; set; }
+
+        [Option('b', "backup-dir", HelpText = "If provided, will back up game saves to the specified directory.")]
+        public string BackupDir { get; set; }
     }
 
-    [Verb("modify", HelpText = "Modify one or more attributes of a game save.")]
-    public class ModifyOptions : CommonOptions
+    [Verb("refresh", HelpText = "Refresh, repair, or refill exosuit, multitool, ship, or freighter inventory.")]
+    public class RefreshOptions : CommonOptions
     {
         [Option('a', "all", HelpText = "Maximize exosuit, multi-tool, ship, and freighter inventory, health, fuel, and energy levels. Repair all damage.")]
         public bool Everything { get; set; }
@@ -65,6 +69,9 @@ namespace nmssavetool
 
         [Option("v1-format", HelpText = "When encrypting, use the old NMS V1 format")]
         public bool UseOldFormat { get; set; }
+
+        [Option('b', "backup-dir", HelpText = "If provided, will back up game saves to the specified directory.")]
+        public string BackupDir { get; set; }
     }
 
     class Program
@@ -118,12 +125,12 @@ namespace nmssavetool
 
         public bool Run(IEnumerable<string> args)
         {
-            var result = CommandLine.Parser.Default.ParseArguments<DecryptOptions, EncryptOptions, ModifyOptions>(args);
+            var result = CommandLine.Parser.Default.ParseArguments<DecryptOptions, EncryptOptions, RefreshOptions>(args);
 
             bool success = result.MapResult(
                 (DecryptOptions opt) => RunDecrypt(opt),
                 (EncryptOptions opt) => RunEncrypt(opt),
-                (ModifyOptions opt) => RunModify(opt),
+                (RefreshOptions opt) => RunRefresh(opt),
                 _ => false);
 
             return success;
@@ -206,6 +213,30 @@ namespace nmssavetool
                 return false;
             }
 
+            if (null != opt.BackupDir)
+            {
+                try
+                {
+                    string backupPath;
+                    bool backupCreated;
+                    gsd.Backup(opt.BackupDir, out backupPath, out backupCreated);
+
+                    if (backupCreated)
+                    {
+                        LogVerbose("Backed up save game files to: {0}", backupPath);
+                    }
+                    else
+                    {
+                        LogVerbose("Backup file already exists: {0}", backupPath);
+                    }
+                }
+                catch (Exception x)
+                {
+                    LogError("Error backing up save game files: {0}", x.Message);
+                    return false;
+                }
+            }
+
             try
             {
                 WriteLatestSaveFile(opt.GameMode, json, opt.UseOldFormat);
@@ -219,7 +250,7 @@ namespace nmssavetool
             return true;
         }
 
-        private bool RunModify(ModifyOptions opt)
+        private bool RunRefresh(RefreshOptions opt)
         {
             DoCommon(opt);
 
@@ -328,6 +359,30 @@ namespace nmssavetool
                 }
             }
 
+            if (null != opt.BackupDir)
+            {
+                try
+                {
+                    string backupPath;
+                    bool backupCreated;
+                    gsd.Backup(opt.BackupDir, out backupPath, out backupCreated);
+
+                    if (backupCreated)
+                    {
+                        LogVerbose("Backed up save game files to: {0}", backupPath);
+                    }
+                    else
+                    {
+                        LogVerbose("Backup file already exists: {0}", backupPath);
+                    }
+                }
+                catch (Exception x)
+                {
+                    LogError("Error backing up save game files: {0}", x.Message);
+                    return false;
+                }
+            }
+
             try
             {
                 WriteLatestSaveFile(opt.GameMode, json, opt.UseOldFormat);
@@ -391,7 +446,11 @@ namespace nmssavetool
             using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(formattedJson)))
             {
                 Storage.Write(metadataPath, storagePath, ms, archiveNumber, profileKey, useOldFormat);
+                var now = DateTime.Now;
+                File.SetLastWriteTime(metadataPath, now);
+                File.SetLastWriteTime(storagePath, now);
             }
         }
+
     }
 }
