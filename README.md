@@ -7,7 +7,7 @@ Created by [Matthew Humphrey](https://github.com/matthew-humphrey)
 This is a simple tool to allow decoding, encoding, and convenient editing operations
 on saves for the No Man's Sky game.
 
-Download [precompiled binary](http://www.mediafire.com/file/ezm6yt46yzelu7y/nmssavetool-1.1.zip)
+Download [precompiled binary](http://www.mediafire.com/file/8769mwqqhdz3cvd/nmssavetool-1.2.zip)
 
 ##Usage
 
@@ -16,7 +16,7 @@ Run "nmssavetool help" for help.
 ```
 > nmssavetool help
 
-nmssavetool 1.1.0.0
+nmssavetool 1.2.0.0
 Copyright c  2016
 
   decrypt    Decrypt the latest game save slot and write it to a formatted JSON file.
@@ -42,7 +42,7 @@ Supported commands
 ```
 >nmssavetool.exe help decrypt
 
-nmssavetool 1.1.0.0
+nmssavetool 1.2.0.0
 Copyright c  2016
 
   -o, --output       Specifies the file to which the decrypted, formatted game save will be written.
@@ -60,7 +60,7 @@ Copyright c  2016
 ```
 >nmssavetool.exe help encrypt
 
-nmssavetool 1.1.0.0
+nmssavetool 1.2.0.0
 Copyright c  2016
 
   -i, --input        Specifies the JSON input file which will be encrypted and written to the latest
@@ -83,7 +83,7 @@ Copyright c  2016
 ```
 >nmssavetool.exe help refresh
 
-nmssavetool 1.1.0.0
+nmssavetool 1.2.0.0
 Copyright c  2016
 
   -a, --all           Maximize exosuit, multi-tool, ship, and freighter inventory, health, fuel, and
