@@ -28,6 +28,12 @@ namespace nmssavetool
         public bool Verbose { get; set; }
     }
 
+    public class BackupOptions : CommonOptions
+    {
+        [Option('b', "backup-dir", HelpText = "If provided, will back up game saves to the specified directory.")]
+        public string BackupDir { get; set; }
+    }
+
     [Verb("decrypt", HelpText = "Decrypt the latest game save slot and write it to a formatted JSON file.")]
     public class DecryptOptions : CommonOptions
     {
@@ -36,20 +42,17 @@ namespace nmssavetool
     }
 
     [Verb("encrypt", HelpText = "Encrypt a JSON file and write it to the latest game save slot.")]
-    public class EncryptOptions : CommonOptions
+    public class EncryptOptions : BackupOptions
     {
         [Option('i', "input", HelpText = "Specifies the JSON input file which will be encrypted and written to the latest game save slot.")]
         public string InputPath { get; set; }
 
         [Option("v1-format", HelpText = "When encrypting, use the old NMS V1 format")]
         public bool UseOldFormat { get; set; }
-
-        [Option('b', "backup-dir", HelpText = "If provided, will back up game saves to the specified directory.")]
-        public string BackupDir { get; set; }
     }
 
-    [Verb("refresh", HelpText = "Refresh, repair, or refill exosuit, multitool, ship, or freighter inventory.")]
-    public class RefreshOptions : CommonOptions
+    [Verb("modify", HelpText = "Refresh, repair, or refill exosuit, multitool, ship, or freighter inventory.")]
+    public class ModifyOptions : BackupOptions
     {
         [Option('a', "all", HelpText = "Maximize exosuit, multi-tool, ship, and freighter inventory, health, fuel, and energy levels. Repair all damage.")]
         public bool Everything { get; set; }
@@ -70,8 +73,23 @@ namespace nmssavetool
         [Option("v1-format", HelpText = "When encrypting, use the old NMS V1 format")]
         public bool UseOldFormat { get; set; }
 
-        [Option('b', "backup-dir", HelpText = "If provided, will back up game saves to the specified directory.")]
-        public string BackupDir { get; set; }
+        [Option("randomize-ship-seed", HelpText = "Generate a new seed value for the Ship.")]
+        public bool RandomizeShipSeed { get; set; }
+
+        [Option("set-ship-seed", HelpText = "Set the seed value for the Ship.")]
+        public string SetShipSeed { get; set; }
+
+        [Option("randomize-multitool-seed", SetName = "multitool-seed", HelpText = "Generate a new seed value for the Multitool.")]
+        public bool RandomizeMultitoolSeed { get; set; }
+
+        [Option("set-multitool-seed", SetName = "multitool-seed", HelpText = "Set the seed value for the Multitool.")]
+        public string SetMultitoolSeed { get; set; }
+
+        [Option("randomize-freighter-seed", SetName = "freighter-seed", HelpText = "Generate a new seed value for the Freighter.")]
+        public bool RandomizeFreighterSeed { get; set; }
+
+        [Option("set-freighter-seed", SetName = "freighter-seed", HelpText = "Set the seed value for the Freighter.")]
+        public string SetFreighterSeed { get; set; }
     }
 
     class Program
@@ -88,8 +106,9 @@ namespace nmssavetool
             "^LASER", "^GRENADE"
         };
 
-        private GameSaveDir gsd;
-        private HashSet<string> refillableTech;
+        private GameSaveDir _gsd;
+        private HashSet<string> _refillableTech;
+        private Random _random;
 
         static void Main(string[] args)
         {            
@@ -113,8 +132,9 @@ namespace nmssavetool
 
         Program()
         {
-            this.gsd = new GameSaveDir();
-            this.refillableTech = new HashSet<string>(REFILLABLE_TECH);
+            _gsd = new GameSaveDir();
+            _refillableTech = new HashSet<string>(REFILLABLE_TECH);
+            _random = new Random();
             LogWriter = Console.Out;
         }
 
@@ -125,12 +145,12 @@ namespace nmssavetool
 
         public bool Run(IEnumerable<string> args)
         {
-            var result = CommandLine.Parser.Default.ParseArguments<DecryptOptions, EncryptOptions, RefreshOptions>(args);
+            var result = CommandLine.Parser.Default.ParseArguments<DecryptOptions, EncryptOptions, ModifyOptions>(args);
 
             bool success = result.MapResult(
                 (DecryptOptions opt) => RunDecrypt(opt),
                 (EncryptOptions opt) => RunEncrypt(opt),
-                (RefreshOptions opt) => RunRefresh(opt),
+                (ModifyOptions opt) => RunModify(opt),
                 _ => false);
 
             return success;
@@ -213,29 +233,7 @@ namespace nmssavetool
                 return false;
             }
 
-            if (null != opt.BackupDir)
-            {
-                try
-                {
-                    string backupPath;
-                    bool backupCreated;
-                    gsd.Backup(opt.BackupDir, out backupPath, out backupCreated);
-
-                    if (backupCreated)
-                    {
-                        LogVerbose("Backed up save game files to: {0}", backupPath);
-                    }
-                    else
-                    {
-                        LogVerbose("Backup file already exists: {0}", backupPath);
-                    }
-                }
-                catch (Exception x)
-                {
-                    LogError("Error backing up save game files: {0}", x.Message);
-                    return false;
-                }
-            }
+            BackupSave(opt);
 
             try
             {
@@ -250,24 +248,73 @@ namespace nmssavetool
             return true;
         }
 
-        private bool RunRefresh(RefreshOptions opt)
+        private static ulong ParseUlongOption(string str)
         {
-            DoCommon(opt);
+            if (str.StartsWith("0x") || str.StartsWith("0X"))
+            {
+                return Convert.ToUInt64(str, 16);
+            }
+            else
+            {
+                return Convert.ToUInt64(str);
+            }
+        }
 
-            dynamic json;
+
+        private bool RunModify(ModifyOptions opt)
+        {
             try
             {
-                json = ReadLatestSaveFile(opt.GameMode);
+                DoCommon(opt);
+
+                dynamic json;
+                try
+                {
+                    json = ReadLatestSaveFile(opt.GameMode);
+                }
+                catch (Exception x)
+                {
+                    Console.WriteLine("Error loading or parsing save file: {0}", x.Message);
+                    return false;
+                }
+
+                // Now iterate through JSON, maxing out technology, Substance, and Product values in Inventory, ShipInventory, and FreighterInventory
+
+                ModifyExosuitSlots(opt, json);
+                ModifyMultitoolSlots(opt, json);
+                ModifyShipSlots(opt, json);
+                ModifyFreighterSlots(opt, json);
+                ModifyShipSeed(opt, json);
+                ModifyMultitoolSeed(opt, json);
+                ModifyFreighterSeed(opt, json);
+
+                BackupSave(opt);
+
+                try
+                {
+                    WriteLatestSaveFile(opt.GameMode, json, opt.UseOldFormat);
+                }
+                catch (Exception x)
+                {
+                    throw new Exception(string.Format("Error storing save file: {0}", x.Message), x);
+                }
             }
             catch (Exception x)
             {
-                Console.WriteLine("Error loading or parsing save file: {0}", x.Message);
+                LogError(x.Message);
                 return false;
             }
 
-            // Now iterate through JSON, maxing out technology, Substance, and Product values in Inventory, ShipInventory, and FreighterInventory
+            return true;
+        }
 
-            // Exosuit
+        private dynamic SuitInventoryNode(dynamic json)
+        {
+            return json.PlayerStateData.Inventory;
+        }
+
+        private void ModifyExosuitSlots(ModifyOptions opt, dynamic json)
+        {
             if (opt.TechGroups.Contains(TechGrp.exosuit))
             {
                 LogVerbose("Updating Exosuit");
@@ -278,14 +325,14 @@ namespace nmssavetool
                     json.PlayerStateData.Shield = 100;
                 }
 
-                foreach (var slot in json.PlayerStateData.Inventory.Slots)
+                foreach (var slot in SuitInventoryNode(json).Slots)
                 {
                     if (opt.Repair || opt.Everything)
                     {
                         slot.DamageFactor = 0.0f;
                     }
 
-                    if ((opt.Energy || opt.Everything) && slot.Type.InventoryType == "Technology" && refillableTech.Contains(slot.Id.Value))
+                    if ((opt.Energy || opt.Everything) && slot.Type.InventoryType == "Technology" && _refillableTech.Contains(slot.Id.Value))
                     {
                         slot.Amount = slot.MaxAmount;
                     }
@@ -296,25 +343,40 @@ namespace nmssavetool
                     }
                 }
             }
+        }
 
-            // Multitool (Weapon)
+        private dynamic WeaponInventoryNode(dynamic json)
+        {
+            return json.PlayerStateData.WeaponInventory;
+        }
+
+        private void ModifyMultitoolSlots(ModifyOptions opt, dynamic json)
+        {
             if (opt.TechGroups.Contains(TechGrp.multitool))
             {
                 LogVerbose("Updating Multitool");
-                foreach (var slot in json.PlayerStateData.WeaponInventory.Slots)
+                foreach (var slot in WeaponInventoryNode(json).Slots)
                 {
                     if (opt.Repair || opt.Everything)
                     {
                         slot.DamageFactor = 0.0f;
                     }
 
-                    if ((opt.Energy || opt.Everything) && refillableTech.Contains(slot.Id.Value))
+                    if ((opt.Energy || opt.Everything) && _refillableTech.Contains(slot.Id.Value))
                     {
                         slot.Amount = slot.MaxAmount;
                     }
                 }
             }
+        }
 
+        private dynamic PrimaryShipInventoryNode(dynamic json)
+        {
+            return PrimaryShipNode(json).Inventory;
+        }
+
+        private void ModifyShipSlots(ModifyOptions opt, dynamic json)
+        {
             if (opt.TechGroups.Contains(TechGrp.ship))
             {
                 LogVerbose("Updating Ship");
@@ -324,14 +386,14 @@ namespace nmssavetool
                     json.PlayerStateData.ShipShield = 200;
                 }
 
-                foreach (var slot in json.PlayerStateData.ShipInventory.Slots)
+                foreach (var slot in PrimaryShipInventoryNode(json).Slots)
                 {
                     if (opt.Repair || opt.Everything)
                     {
                         slot.DamageFactor = 0.0f;
                     }
 
-                    if ((opt.Energy || opt.Everything) && slot.Type.InventoryType == "Technology" && refillableTech.Contains(slot.Id.Value))
+                    if ((opt.Energy || opt.Everything) && slot.Type.InventoryType == "Technology" && _refillableTech.Contains(slot.Id.Value))
                     {
                         slot.Amount = slot.MaxAmount;
                     }
@@ -342,30 +404,40 @@ namespace nmssavetool
                     }
                 }
             }
+        }
 
+        private dynamic FreighterInventoryNode(dynamic json)
+        {
+            return json.PlayerStateData.FreighterInventory;
+        }
 
+        private void ModifyFreighterSlots(ModifyOptions opt, dynamic json)
+        {
             if (opt.TechGroups.Contains(TechGrp.freighter))
             {
                 LogVerbose("Updating Freighter");
-                foreach (var slot in json.PlayerStateData.FreighterInventory.Slots)
+                foreach (var slot in FreighterInventoryNode(json).Slots)
                 {
-                    if ( (opt.Inventory || opt.Everything) &&
+                    if ((opt.Inventory || opt.Everything) &&
                         // Leave this next line in as protection against future version of NMS allowing other things in Freighter
-                        (slot.Type.InventoryType == "Product" || slot.Type.InventoryType == "Substance") 
+                        (slot.Type.InventoryType == "Product" || slot.Type.InventoryType == "Substance")
                        )
                     {
                         slot.Amount = slot.MaxAmount;
                     }
                 }
             }
+        }
 
+        private void BackupSave(BackupOptions opt)
+        {
             if (null != opt.BackupDir)
             {
                 try
                 {
                     string backupPath;
                     bool backupCreated;
-                    gsd.Backup(opt.BackupDir, out backupPath, out backupCreated);
+                    _gsd.Backup(opt.BackupDir, out backupPath, out backupCreated);
 
                     if (backupCreated)
                     {
@@ -378,23 +450,107 @@ namespace nmssavetool
                 }
                 catch (Exception x)
                 {
-                    LogError("Error backing up save game files: {0}", x.Message);
-                    return false;
+                    throw new Exception(string.Format("Error backing up save game files: {0}", x.Message), x);
                 }
             }
-
-            try
-            {
-                WriteLatestSaveFile(opt.GameMode, json, opt.UseOldFormat);
-            }
-            catch (Exception x)
-            {
-                Console.WriteLine("Error storing save file: {0}", x.Message);
-                return false;
-            }
-
-            return true;
         }
+
+        private void ModifyShipSeed(ModifyOptions opt, dynamic json)
+        {
+            ulong? seed = null;
+
+            if (opt.SetShipSeed != null)
+            {
+                try
+                {
+                    seed = ParseUlongOption(opt.SetShipSeed);
+                }
+                catch(Exception x)
+                {
+                    throw new ArgumentException(string.Format("Invalid value for option {0}: {1}", "--set-ship-seed", opt.SetShipSeed), x);
+                }
+            }
+            else if (opt.RandomizeShipSeed)
+            {
+                byte[] randBytes = new byte[8];
+                _random.NextBytes(randBytes);
+                seed = BitConverter.ToUInt64(randBytes, 0);
+            }
+
+            if (seed != null)
+            {
+                string seedStr = string.Format("0x{0:X16}", seed);
+                LogVerbose("Setting ship seed to: {0}", seedStr);
+                PrimaryShipNode(json).Resource.Seed[1] = seedStr;
+            }
+        }
+
+        private void ModifyMultitoolSeed(ModifyOptions opt, dynamic json)
+        {
+            ulong? seed = null;
+
+            if (opt.SetMultitoolSeed != null)
+            {
+                try
+                {
+                    seed = ParseUlongOption(opt.SetShipSeed);
+                }
+                catch (Exception x)
+                {
+                    throw new ArgumentException(string.Format("Invalid value for option {0}: {1}", "--nodify-multitool-seed", opt.SetMultitoolSeed), x);
+                }
+            }
+            else if (opt.RandomizeMultitoolSeed)
+            {
+                byte[] randBytes = new byte[8];
+                _random.NextBytes(randBytes);
+                seed = BitConverter.ToUInt64(randBytes, 0);
+            }
+
+            if (seed != null)
+            {
+                string seedStr = string.Format("0x{0:X16}", seed);
+                LogVerbose("Setting multitool seed to: {0}", seedStr);
+                json.PlayerStateData.CurrentWeapon.GenerationSeed[1] = seedStr;
+            }
+        }
+
+        private void ModifyFreighterSeed(ModifyOptions opt, dynamic json)
+        {
+            ulong? seed = null;
+
+            if (opt.SetFreighterSeed != null)
+            {
+                try
+                {
+                    seed = ParseUlongOption(opt.SetFreighterSeed);
+                }
+                catch (Exception x)
+                {
+                    throw new ArgumentException(string.Format("Invalid value for option {0}: {1}", "--modify-freighter-seed", opt.SetFreighterSeed), x);
+                }
+            }
+            else if (opt.RandomizeFreighterSeed)
+            {
+                byte[] randBytes = new byte[8];
+                _random.NextBytes(randBytes);
+                seed = BitConverter.ToUInt64(randBytes, 0);
+            }
+
+            if (seed != null)
+            {
+                string seedStr = string.Format("0x{0:X16}", seed);
+                LogVerbose("Setting freightert seed to: {0}", seedStr);
+                json.PlayerStateData.CurrentFreighter.Seed[1] = seedStr;
+            }
+        }
+
+        private dynamic PrimaryShipNode(dynamic json)
+        {
+            int primaryShipIndex = json.PlayerStateData.PrimaryShip;
+            return json.PlayerStateData.ShipOwnership[primaryShipIndex];
+        }
+
 
         private void Log(string format, params object[] arg)
         {
@@ -422,7 +578,7 @@ namespace nmssavetool
             uint archiveNumber;
             ulong profileKey;
 
-            gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
+            _gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
 
             LogVerbose("Reading latest {0}-mode save game file from: {1}", gameMode, storagePath);
 
@@ -440,7 +596,7 @@ namespace nmssavetool
             uint archiveNumber;
             ulong profileKey;
 
-            gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
+            _gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
 
             LogVerbose("Writing latest {0}-mode save game file to: {1}", gameMode, storagePath);
             using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(formattedJson)))

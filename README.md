@@ -7,7 +7,7 @@ Created by [Matthew Humphrey](https://github.com/matthew-humphrey)
 This is a simple tool to allow decoding, encoding, and convenient editing operations
 on saves for the No Man's Sky game.
 
-Download [precompiled binary](http://www.mediafire.com/file/8769mwqqhdz3cvd/nmssavetool-1.2.zip)
+Download [precompiled binary](https://github.com/matthew-humphrey/nmssavetool/releases/latest)
 
 ##Usage
 
@@ -16,14 +16,13 @@ Run "nmssavetool help" for help.
 ```
 > nmssavetool help
 
-nmssavetool 1.2.0.0
-Copyright c  2016
+nmssavetool 1.3.0.0
 
   decrypt    Decrypt the latest game save slot and write it to a formatted JSON file.
 
   encrypt    Encrypt a JSON file and write it to the latest game save slot.
 
-  refresh    Refresh, repair, or refill exosuit, multitool, ship, or freighter inventory.
+  modify     Refresh, repair, or refill exosuit, multitool, ship, or freighter inventory.
 
   help       Display more information on a specific command.
 
@@ -34,7 +33,7 @@ Supported commands
 
 * decrypt - Decrypt the latest save game for the specified game mode (normal/survival/creative) and write it to a file whose location you specify.
 * encrypt - Encrypt the file you specify and write it to the latest save game slot for the specified game mode.
-* refresh - Edit the latest game save slot for the specified game mode to repair damage, maximize energy levels, and/or maximize inventory levels.
+* modify - Edit the latest game save slot for the specified game mode to repair damage, maximize energy levels, and/or maximize inventory levels.
 * help - Provide help on command-line syntax for any command.
 * version - Displays the program's version information.
 
@@ -42,12 +41,11 @@ Supported commands
 ```
 >nmssavetool.exe help decrypt
 
-nmssavetool 1.2.0.0
-Copyright c  2016
+nmssavetool 1.3.0.0
 
   -o, --output       Specifies the file to which the decrypted, formatted game save will be written.
 
-  -g, --game-mode    Required. Use saves for which game mode (normal|surival|creative)
+  -g, --game-mode    Required. Use saves for which game mode (normal|survival|creative)
 
   -v, --verbose      Displays additional information during execution.
 
@@ -60,55 +58,64 @@ Copyright c  2016
 ```
 >nmssavetool.exe help encrypt
 
-nmssavetool 1.2.0.0
-Copyright c  2016
+nmssavetool 1.3.0.0
 
-  -i, --input        Specifies the JSON input file which will be encrypted and written to the latest
-                     game save slot.
-
-  --v1-format        When encrypting, use the old NMS V1 format
-
-  -b, --backup-dir   If provided, will back up game saves to the specified directory.
-
-  -g, --game-mode    Required. Use saves for which game mode (normal|surival|creative)
-
-  -v, --verbose      Displays additional information during execution.
-
-  --help             Display this help screen.
-
-  --version          Display version information.```
-```
-
-###refresh
-```
->nmssavetool.exe help refresh
-
-nmssavetool 1.2.0.0
-Copyright c  2016
-
-  -a, --all           Maximize exosuit, multi-tool, ship, and freighter inventory, health, fuel, and
-                      energy levels. Repair all damage.
-
-  -e, --energy        Maximize exosuit, multi-tool, and ship energy and fuel (hyperdrive and launcher)
-                      levels.
-
-  -i, --inventory     Maximize exosuit, multi-tool, ship, and freighter inventory.
-
-  -r, --repair        Repair damage to exosuit, multi-tool, and ship.
-
-  -t, --apply-to      (Default: exosuit multitool ship freighter) What to apply changes to.
+  -i, --input         Specifies the JSON input file which will be encrypted and written to the latest game save slot.
 
   --v1-format         When encrypting, use the old NMS V1 format
 
   -b, --backup-dir    If provided, will back up game saves to the specified directory.
 
-  -g, --game-mode     Required. Use saves for which game mode (normal|surival|creative)
+  -g, --game-mode     Required. Use saves for which game mode (normal|survival|creative)
 
   -v, --verbose       Displays additional information during execution.
 
   --help              Display this help screen.
 
   --version           Display version information.
+```
+
+###modify
+```
+>nmssavetool.exe help modify
+
+nmssavetool 1.3.0.0
+
+  -a, --all                     Maximize exosuit, multi-tool, ship, and freighter inventory, health, fuel, and energy
+                                levels. Repair all damage.
+
+  -e, --energy                  Maximize exosuit, multi-tool, and ship energy and fuel (hyperdrive and launcher)
+                                levels.
+
+  -i, --inventory               Maximize exosuit, multi-tool, ship, and freighter inventory.
+
+  -r, --repair                  Repair damage to exosuit, multi-tool, and ship.
+
+  -t, --apply-to                (Default: exosuit multitool ship freighter) What to apply changes to.
+
+  --v1-format                   When encrypting, use the old NMS V1 format
+
+  --randomize-ship-seed         Generate a new seed value for the Ship.
+
+  --set-ship-seed               Set the seed value for the Ship.
+
+  --randomize-multitool-seed    Generate a new seed value for the Multitool.
+
+  --set-multitool-seed          Set the seed value for the Multitool.
+
+  --randomize-freighter-seed    Generate a new seed value for the Freighter.
+
+  --set-freighter-seed          Set the seed value for the Freighter.
+
+  -b, --backup-dir              If provided, will back up game saves to the specified directory.
+
+  -g, --game-mode               Required. Use saves for which game mode (normal|survival|creative)
+
+  -v, --verbose                 Displays additional information during execution.
+
+  --help                        Display this help screen.
+
+  --version                     Display version information.
 ```
 
 ##Changelog
@@ -124,7 +131,10 @@ Copyright c  2016
 * Moved to a verb-style command line interface, and provide more fine-grained control over modifications.
 * Minor refactoring to reduce duplicated code
 
-###2017-01-01 1.2.0.0
+###2017-01-01 1.2.0.1
 
-* Renamed "modify" command to "refresh" in preparation for future new feature
 * Added backup feature
+
+###2017-03-11 1.3.0.0
+
+* Updated to work with new NMS save file format (version 4101) in the NMS Pathfinder update (version 1.2)
