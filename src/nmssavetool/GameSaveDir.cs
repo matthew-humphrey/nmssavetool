@@ -10,7 +10,8 @@ namespace nmssavetool
     {
         normal,
         survival,
-        creative
+        creative,
+        permadeath
     }
 
 
@@ -26,8 +27,8 @@ namespace nmssavetool
             get { return _savePath; }
         }
 
-        private ulong _profileKey;
-        public ulong ProfileKey
+        private ulong? _profileKey;
+        public ulong? ProfileKey
         {
             get { return _profileKey; }
         }
@@ -41,6 +42,18 @@ namespace nmssavetool
             }
 
             ulong? pk = null;
+
+            // Check for GoG version of the game (hat tip to Reddit user, Yarmoshuk)
+            var gogDir = Path.Combine(nmsPath, "DefaultUser");
+            if (Directory.Exists(gogDir))
+            {
+                if (File.Exists(Path.Combine(gogDir, "storage.hg")))
+                {
+                    _savePath = gogDir;
+                    _profileKey = null;
+                    return;
+                }
+            }
 
             foreach (var dir in Directory.EnumerateDirectories(nmsPath))
             {
@@ -104,7 +117,7 @@ namespace nmssavetool
             }
         }
 
-        public void FindLatestGameSaveFiles(GameModes gameMode, out string metadataPath, out string storagePath, out uint archiveNumber, out ulong profileKey)
+        public void FindLatestGameSaveFiles(GameModes gameMode, out string metadataPath, out string storagePath, out uint archiveNumber, out ulong? profileKey)
         {
             metadataPath = null;
             storagePath = null;
@@ -123,6 +136,9 @@ namespace nmssavetool
                     break;
                 case GameModes.creative:
                     archiveNumbers = new uint[] { 6, 7, 8 };
+                    break;
+                case GameModes.permadeath:
+                    archiveNumbers = new uint[] { 9, 10, 11 };
                     break;
                 default:
                     throw new InvalidOperationException();

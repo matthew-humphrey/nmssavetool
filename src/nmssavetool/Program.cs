@@ -21,7 +21,7 @@ namespace nmssavetool
 
     public class CommonOptions
     {
-        [Option('g', "game-mode", Required = true, HelpText = "Use saves for which game mode (normal|survival|creative)")]
+        [Option('g', "game-mode", Required = true, HelpText = "Use saves for which game mode (normal|survival|creative|permadeath)")]
         public GameModes GameMode { get; set; }
 
         [Option('v', "verbose", HelpText = "Displays additional information during execution.")]
@@ -37,14 +37,14 @@ namespace nmssavetool
     [Verb("decrypt", HelpText = "Decrypt the latest game save slot and write it to a formatted JSON file.")]
     public class DecryptOptions : CommonOptions
     {
-        [Option('o', "output", HelpText = "Specifies the file to which the decrypted, formatted game save will be written.")]
+        [Option('o', "output", Required = true, HelpText = "Specifies the file to which the decrypted, formatted game save will be written.")]
         public string OutputPath { get; set; }
     }
 
     [Verb("encrypt", HelpText = "Encrypt a JSON file and write it to the latest game save slot.")]
     public class EncryptOptions : BackupOptions
     {
-        [Option('i', "input", HelpText = "Specifies the JSON input file which will be encrypted and written to the latest game save slot.")]
+        [Option('i', "input", Required = true, HelpText = "Specifies the JSON input file which will be encrypted and written to the latest game save slot.")]
         public string InputPath { get; set; }
 
         [Option("v1-format", HelpText = "When encrypting, use the old NMS V1 format")]
@@ -576,7 +576,7 @@ namespace nmssavetool
             string metadataPath;
             string storagePath;
             uint archiveNumber;
-            ulong profileKey;
+            ulong? profileKey;
 
             _gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
 
@@ -594,7 +594,7 @@ namespace nmssavetool
             string metadataPath;
             string storagePath;
             uint archiveNumber;
-            ulong profileKey;
+            ulong? profileKey;
 
             _gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
 
