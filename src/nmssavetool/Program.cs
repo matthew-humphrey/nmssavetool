@@ -24,6 +24,9 @@ namespace nmssavetool
         [Option('g', "game-mode", Required = true, HelpText = "Use saves for which game mode (normal|survival|creative|permadeath)")]
         public GameModes GameMode { get; set; }
 
+        [Option('s', "save-dir", Required = false, HelpText = "Path to game save folder (optional - determined automatically if not provided)")]
+        public string SaveDir { get; set; }
+
         [Option('v', "verbose", HelpText = "Displays additional information during execution.")]
         public bool Verbose { get; set; }
     }
@@ -106,7 +109,6 @@ namespace nmssavetool
             "^LASER", "^GRENADE"
         };
 
-        private GameSaveDir _gsd;
         private HashSet<string> _refillableTech;
         private Random _random;
 
@@ -132,7 +134,6 @@ namespace nmssavetool
 
         Program()
         {
-            _gsd = new GameSaveDir();
             _refillableTech = new HashSet<string>(REFILLABLE_TECH);
             _random = new Random();
             LogWriter = Console.Out;
@@ -146,7 +147,7 @@ namespace nmssavetool
         public bool Run(IEnumerable<string> args)
         {
             var result = CommandLine.Parser.Default.ParseArguments<DecryptOptions, EncryptOptions, ModifyOptions>(args);
-
+            
             bool success = result.MapResult(
                 (DecryptOptions opt) => RunDecrypt(opt),
                 (EncryptOptions opt) => RunEncrypt(opt),
@@ -162,16 +163,30 @@ namespace nmssavetool
             {
                 Verbose = opt.Verbose;
             }
+
+            LogVerbose("CLR version: {0}", Environment.Version);
+            LogVerbose("APPDATA folder: {0}", Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
         }
 
         private bool RunDecrypt(DecryptOptions opt)
         {
             DoCommon(opt);
 
+            GameSaveDir gsd;
+            try
+            {
+                gsd = new GameSaveDir(opt.SaveDir);
+            }
+            catch (Exception x)
+            {
+                LogError("Error locating game save file:\n{0}", x.Message);
+                return false;
+            }
+
             object json;
             try
             {
-                json = ReadLatestSaveFile(opt.GameMode);
+                json = ReadLatestSaveFile(gsd, opt.GameMode);
             }
             catch (Exception x)
             {
@@ -191,7 +206,7 @@ namespace nmssavetool
                 return false;
             }
 
-            LogVerbose("Writing formatted JSON to: {0}", opt.OutputPath);
+            LogVerbose("Writing formatted JSON to:\n   {0}", opt.OutputPath);
             try
             {
                 File.WriteAllText(opt.OutputPath, formattedJson);
@@ -208,6 +223,17 @@ namespace nmssavetool
         private bool RunEncrypt(EncryptOptions opt)
         {
             DoCommon(opt);
+
+            GameSaveDir gsd;
+            try
+            {
+                gsd = new GameSaveDir(opt.SaveDir);
+            }
+            catch (Exception x)
+            {
+                LogError("Error locating game save file:\n{0}", x.Message);
+                return false;
+            }
 
             LogVerbose("Reading JSON save game data from: {0}", opt.InputPath);
             string unformattedJson;
@@ -233,11 +259,11 @@ namespace nmssavetool
                 return false;
             }
 
-            BackupSave(opt);
+            BackupSave(gsd, opt);
 
             try
             {
-                WriteLatestSaveFile(opt.GameMode, json, opt.UseOldFormat);
+                WriteLatestSaveFile(gsd, opt.GameMode, json, opt.UseOldFormat);
             }
             catch (Exception x)
             {
@@ -267,10 +293,21 @@ namespace nmssavetool
             {
                 DoCommon(opt);
 
+                GameSaveDir gsd;
+                try
+                {
+                    gsd = new GameSaveDir(opt.SaveDir);
+                }
+                catch (Exception x)
+                {
+                    LogError("Error locating game save file:\n{0}", x.Message);
+                    return false;
+                }
+
                 dynamic json;
                 try
                 {
-                    json = ReadLatestSaveFile(opt.GameMode);
+                    json = ReadLatestSaveFile(gsd, opt.GameMode);
                 }
                 catch (Exception x)
                 {
@@ -288,11 +325,11 @@ namespace nmssavetool
                 ModifyMultitoolSeed(opt, json);
                 ModifyFreighterSeed(opt, json);
 
-                BackupSave(opt);
+                BackupSave(gsd, opt);
 
                 try
                 {
-                    WriteLatestSaveFile(opt.GameMode, json, opt.UseOldFormat);
+                    WriteLatestSaveFile(gsd, opt.GameMode, json, opt.UseOldFormat);
                 }
                 catch (Exception x)
                 {
@@ -429,7 +466,7 @@ namespace nmssavetool
             }
         }
 
-        private void BackupSave(BackupOptions opt)
+        private void BackupSave(GameSaveDir gsd, BackupOptions opt)
         {
             if (null != opt.BackupDir)
             {
@@ -437,7 +474,7 @@ namespace nmssavetool
                 {
                     string backupPath;
                     bool backupCreated;
-                    _gsd.Backup(opt.BackupDir, out backupPath, out backupCreated);
+                    gsd.Backup(opt.BackupDir, out backupPath, out backupCreated);
 
                     if (backupCreated)
                     {
@@ -571,23 +608,23 @@ namespace nmssavetool
         }
 
         // TODO: Move all save file handling into a separate class
-        private object ReadLatestSaveFile(GameModes gameMode)
+        private object ReadLatestSaveFile(GameSaveDir gsd, GameModes gameMode)
         {
             string metadataPath;
             string storagePath;
             uint archiveNumber;
             ulong? profileKey;
 
-            _gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
+            gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
 
-            LogVerbose("Reading latest {0}-mode save game file from: {1}", gameMode, storagePath);
+            LogVerbose("Reading latest {0}-mode save game file from:\n   {1}", gameMode, storagePath);
 
             string jsonStr = Storage.Read(metadataPath, storagePath, archiveNumber, profileKey);
 
             return JsonConvert.DeserializeObject(jsonStr);
         }
 
-        private void WriteLatestSaveFile(GameModes gameMode, object json, bool useOldFormat)
+        private void WriteLatestSaveFile(GameSaveDir gsd, GameModes gameMode, object json, bool useOldFormat)
         {
             string formattedJson = JsonConvert.SerializeObject(json, Formatting.None);
 
@@ -596,9 +633,9 @@ namespace nmssavetool
             uint archiveNumber;
             ulong? profileKey;
 
-            _gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
+            gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
 
-            LogVerbose("Writing latest {0}-mode save game file to: {1}", gameMode, storagePath);
+            LogVerbose("Writing latest {0}-mode save game file to:\n   {1}", gameMode, storagePath);
             using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(formattedJson)))
             {
                 Storage.Write(metadataPath, storagePath, ms, archiveNumber, profileKey, useOldFormat);

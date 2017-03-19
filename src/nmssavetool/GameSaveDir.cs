@@ -33,42 +33,64 @@ namespace nmssavetool
             get { return _profileKey; }
         }
 
-        public GameSaveDir()
+        public GameSaveDir(string saveDir)
         {
-            var nmsPath = Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "HelloGames"), "NMS");
-            if (!Directory.Exists(nmsPath))
+            if (saveDir != null)
             {
-                throw new FileNotFoundException("No Man's Sky save game folder not found at expected location: {0}", nmsPath);
+                if (Directory.EnumerateFiles(saveDir, "storage*.hg").Count() > 0)
+                {
+                    _savePath = saveDir;
+                }
+                else
+                {
+                    throw new FileNotFoundException(string.Format("Specified save game directory does not contain any save game files: {0}", saveDir));
+                }
             }
-
-            ulong? pk = null;
-
-            // Check for GoG version of the game (hat tip to Reddit user, Yarmoshuk)
-            var gogDir = Path.Combine(nmsPath, "DefaultUser");
-            if (Directory.Exists(gogDir))
+            else
             {
-                if (File.Exists(Path.Combine(gogDir, "storage.hg")))
+                var nmsPath = Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "HelloGames"), "NMS");
+                if (!Directory.Exists(nmsPath))
+                {
+                    throw new FileNotFoundException(string.Format("No Man's Sky save game folder not found at expected location: {0}", nmsPath));
+                }
+
+                _profileKey = null;
+
+                // Check for GoG version of the game (hat tip to Reddit user, Yarmoshuk)
+                var gogDir = Path.Combine(nmsPath, "DefaultUser");
+                if (Directory.Exists(gogDir) && Directory.EnumerateFiles(gogDir, "storage*.hg").Count() > 0)
                 {
                     _savePath = gogDir;
-                    _profileKey = null;
-                    return;
                 }
-            }
 
-            foreach (var dir in Directory.EnumerateDirectories(nmsPath))
-            {
-                pk = GetProfileKeyFromPath(dir);
-                if (null != pk)
+                if (null == _savePath)
                 {
-                    _savePath = dir;
-                    _profileKey = pk.Value;
-                    break;
+                    foreach (var dir in Directory.EnumerateDirectories(nmsPath))
+                    {
+                        _profileKey = GetProfileKeyFromPath(dir);
+                        if (null != _profileKey)
+                        {
+                            _savePath = dir;
+                            break;
+                        }
+                    }
                 }
-            }   
 
-            if (null == pk)
-            {
-                throw new FileNotFoundException("No save game profile folder found in NMS save game folder: {0}", nmsPath);
+                if (null == _savePath)
+                {
+                    foreach (var dir in Directory.EnumerateDirectories(nmsPath))
+                    {
+                        if (Directory.EnumerateFiles(dir, "storage*.hg").Count() > 0)
+                        {
+                            _savePath = dir;
+                        }
+                    }
+                }
+
+                if (null == _savePath)
+                {
+                    throw new FileNotFoundException(string.Format("No save game profile folder found in NMS save game folder: {0}", nmsPath));
+                }
             }
         }
 
