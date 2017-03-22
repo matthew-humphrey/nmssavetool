@@ -16,7 +16,7 @@ Run "nmssavetool help" for help.
 ```
 > nmssavetool help
 
-nmssavetool 1.3.0.0
+nmssavetool 1.4.2.0
 
   decrypt    Decrypt the latest game save slot and write it to a formatted JSON file.
 
@@ -41,11 +41,13 @@ Supported commands
 ```
 >nmssavetool.exe help decrypt
 
-nmssavetool 1.3.0.0
+nmssavetool 1.4.2.0
 
   -o, --output       Specifies the file to which the decrypted, formatted game save will be written.
 
-  -g, --game-mode    Required. Use saves for which game mode (normal|survival|creative)
+  -g, --game-mode    Required. Use saves for which game mode (normal|survival|creative|permadeath)
+
+  -s, --save-dir     Path to game save folder (optional - determined automatically if not provided)
 
   -v, --verbose      Displays additional information during execution.
 
@@ -58,7 +60,7 @@ nmssavetool 1.3.0.0
 ```
 >nmssavetool.exe help encrypt
 
-nmssavetool 1.3.0.0
+nmssavetool 1.4.2.0
 
   -i, --input         Specifies the JSON input file which will be encrypted and written to the latest game save slot.
 
@@ -66,7 +68,9 @@ nmssavetool 1.3.0.0
 
   -b, --backup-dir    If provided, will back up game saves to the specified directory.
 
-  -g, --game-mode     Required. Use saves for which game mode (normal|survival|creative)
+  -g, --game-mode     Required. Use saves for which game mode (normal|survival|creative|permadeath)
+
+  -s, --save-dir     Path to game save folder (optional - determined automatically if not provided)
 
   -v, --verbose       Displays additional information during execution.
 
@@ -79,7 +83,7 @@ nmssavetool 1.3.0.0
 ```
 >nmssavetool.exe help modify
 
-nmssavetool 1.3.0.0
+nmssavetool 1.4.2.0
 
   -a, --all                     Maximize exosuit, multi-tool, ship, and freighter inventory, health, fuel, and energy
                                 levels. Repair all damage.
@@ -109,7 +113,9 @@ nmssavetool 1.3.0.0
 
   -b, --backup-dir              If provided, will back up game saves to the specified directory.
 
-  -g, --game-mode               Required. Use saves for which game mode (normal|survival|creative)
+  -g, --game-mode               Required. Use saves for which game mode (normal|survival|creative|permadeath)
+
+  -s, --save-dir     Path to game save folder (optional - determined automatically if not provided)
 
   -v, --verbose                 Displays additional information during execution.
 
@@ -138,3 +144,20 @@ nmssavetool 1.3.0.0
 ###2017-03-11 1.3.0.0
 
 * Updated to work with new NMS save file format (version 4101) in the NMS Pathfinder update (version 1.2)
+
+###2017-03-12 1.4.0.0
+
+* Added support for GoG game save directory
+* Added support for Permadeath game mode
+
+###2017-03-12 1.4.1.0
+
+* Fixed bug where GoG game save directory detection would only work if a Normal mode game had been saved.
+
+###2017-03-12 1.4.2.0
+
+* Added option (-s / --save-dir) to explicitly specify the folder containing the game save files.
+* Added dump of some troubleshooting info (CLR version and APPDATA folder) to verbose mode display
+* Modified game save location logic to work even if save directories do not contain the profile key
+  number. This key is not needed for current versions of the game, so perhaps newer installs are
+  no longer naming the directory this way.

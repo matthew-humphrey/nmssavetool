@@ -10,7 +10,8 @@ namespace nmssavetool
     {
         normal,
         survival,
-        creative
+        creative,
+        permadeath
     }
 
 
@@ -26,36 +27,70 @@ namespace nmssavetool
             get { return _savePath; }
         }
 
-        private ulong _profileKey;
-        public ulong ProfileKey
+        private ulong? _profileKey;
+        public ulong? ProfileKey
         {
             get { return _profileKey; }
         }
 
-        public GameSaveDir()
+        public GameSaveDir(string saveDir)
         {
-            var nmsPath = Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "HelloGames"), "NMS");
-            if (!Directory.Exists(nmsPath))
+            if (saveDir != null)
             {
-                throw new FileNotFoundException("No Man's Sky save game folder not found at expected location: {0}", nmsPath);
-            }
-
-            ulong? pk = null;
-
-            foreach (var dir in Directory.EnumerateDirectories(nmsPath))
-            {
-                pk = GetProfileKeyFromPath(dir);
-                if (null != pk)
+                if (Directory.EnumerateFiles(saveDir, "storage*.hg").Count() > 0)
                 {
-                    _savePath = dir;
-                    _profileKey = pk.Value;
-                    break;
+                    _savePath = saveDir;
                 }
-            }   
-
-            if (null == pk)
+                else
+                {
+                    throw new FileNotFoundException(string.Format("Specified save game directory does not contain any save game files: {0}", saveDir));
+                }
+            }
+            else
             {
-                throw new FileNotFoundException("No save game profile folder found in NMS save game folder: {0}", nmsPath);
+                var nmsPath = Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "HelloGames"), "NMS");
+                if (!Directory.Exists(nmsPath))
+                {
+                    throw new FileNotFoundException(string.Format("No Man's Sky save game folder not found at expected location: {0}", nmsPath));
+                }
+
+                _profileKey = null;
+
+                // Check for GoG version of the game (hat tip to Reddit user, Yarmoshuk)
+                var gogDir = Path.Combine(nmsPath, "DefaultUser");
+                if (Directory.Exists(gogDir) && Directory.EnumerateFiles(gogDir, "storage*.hg").Count() > 0)
+                {
+                    _savePath = gogDir;
+                }
+
+                if (null == _savePath)
+                {
+                    foreach (var dir in Directory.EnumerateDirectories(nmsPath))
+                    {
+                        _profileKey = GetProfileKeyFromPath(dir);
+                        if (null != _profileKey)
+                        {
+                            _savePath = dir;
+                            break;
+                        }
+                    }
+                }
+
+                if (null == _savePath)
+                {
+                    foreach (var dir in Directory.EnumerateDirectories(nmsPath))
+                    {
+                        if (Directory.EnumerateFiles(dir, "storage*.hg").Count() > 0)
+                        {
+                            _savePath = dir;
+                        }
+                    }
+                }
+
+                if (null == _savePath)
+                {
+                    throw new FileNotFoundException(string.Format("No save game profile folder found in NMS save game folder: {0}", nmsPath));
+                }
             }
         }
 
@@ -104,7 +139,7 @@ namespace nmssavetool
             }
         }
 
-        public void FindLatestGameSaveFiles(GameModes gameMode, out string metadataPath, out string storagePath, out uint archiveNumber, out ulong profileKey)
+        public void FindLatestGameSaveFiles(GameModes gameMode, out string metadataPath, out string storagePath, out uint archiveNumber, out ulong? profileKey)
         {
             metadataPath = null;
             storagePath = null;
@@ -123,6 +158,9 @@ namespace nmssavetool
                     break;
                 case GameModes.creative:
                     archiveNumbers = new uint[] { 6, 7, 8 };
+                    break;
+                case GameModes.permadeath:
+                    archiveNumbers = new uint[] { 9, 10, 11 };
                     break;
                 default:
                     throw new InvalidOperationException();
