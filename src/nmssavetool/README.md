@@ -161,3 +161,7 @@ nmssavetool 1.4.2.0
 * Modified game save location logic to work even if save directories do not contain the profile key
   number. This key is not needed for current versions of the game, so perhaps newer installs are
   no longer naming the directory this way.
+
+###2017-08-13 1.5.0.0
+
+* Added support for new NMS 1.3 Exosuit and Ship inventory groups

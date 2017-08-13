@@ -345,9 +345,43 @@ namespace nmssavetool
             return true;
         }
 
-        private dynamic SuitInventoryNode(dynamic json)
+        private void ModifySlot(ModifyOptions opt, dynamic slot)
+        {
+            if (opt.Repair || opt.Everything)
+            {
+                slot.DamageFactor = 0.0f;
+            }
+
+            if ((opt.Energy || opt.Everything) && slot.Type.InventoryType == "Technology" && _refillableTech.Contains(slot.Id.Value))
+            {
+                slot.Amount = slot.MaxAmount;
+            }
+
+            if ((opt.Inventory || opt.Everything) && (slot.Type.InventoryType == "Product" || slot.Type.InventoryType == "Substance"))
+            {
+                slot.Amount = slot.MaxAmount;
+            }
+        }
+
+        private void ModifySlots(ModifyOptions opt, dynamic slots)
+        {
+            foreach (var slot in slots)
+            {
+                ModifySlot(opt, slot);
+            }
+        }
+
+        private dynamic SuitInventoryGeneralNode(dynamic json)
         {
             return json.PlayerStateData.Inventory;
+        }
+        private dynamic SuitInventoryTechOnlyNode(dynamic json)
+        {
+            return json.PlayerStateData.Inventory_TechOnly;
+        }
+        private dynamic SuitInventoryCargoNode(dynamic json)
+        {
+            return json.PlayerStateData.Inventory_Cargo;
         }
 
         private void ModifyExosuitSlots(ModifyOptions opt, dynamic json)
@@ -362,23 +396,9 @@ namespace nmssavetool
                     json.PlayerStateData.Shield = 100;
                 }
 
-                foreach (var slot in SuitInventoryNode(json).Slots)
-                {
-                    if (opt.Repair || opt.Everything)
-                    {
-                        slot.DamageFactor = 0.0f;
-                    }
-
-                    if ((opt.Energy || opt.Everything) && slot.Type.InventoryType == "Technology" && _refillableTech.Contains(slot.Id.Value))
-                    {
-                        slot.Amount = slot.MaxAmount;
-                    }
-
-                    if ((opt.Inventory || opt.Everything) && (slot.Type.InventoryType == "Product" || slot.Type.InventoryType == "Substance"))
-                    {
-                        slot.Amount = slot.MaxAmount;
-                    }
-                }
+                ModifySlots(opt, SuitInventoryGeneralNode(json).Slots);
+                ModifySlots(opt, SuitInventoryTechOnlyNode(json).Slots);
+                ModifySlots(opt, SuitInventoryCargoNode(json).Slots);
             }
         }
 
@@ -407,9 +427,14 @@ namespace nmssavetool
             }
         }
 
-        private dynamic PrimaryShipInventoryNode(dynamic json)
+        private dynamic PrimaryShipInventoryGeneralNode(dynamic json)
         {
             return PrimaryShipNode(json).Inventory;
+        }
+
+        private dynamic PrimaryShipInventoryTechOnlyNode(dynamic json)
+        {
+            return PrimaryShipNode(json).Inventory_TechOnly;
         }
 
         private void ModifyShipSlots(ModifyOptions opt, dynamic json)
@@ -423,23 +448,8 @@ namespace nmssavetool
                     json.PlayerStateData.ShipShield = 200;
                 }
 
-                foreach (var slot in PrimaryShipInventoryNode(json).Slots)
-                {
-                    if (opt.Repair || opt.Everything)
-                    {
-                        slot.DamageFactor = 0.0f;
-                    }
-
-                    if ((opt.Energy || opt.Everything) && slot.Type.InventoryType == "Technology" && _refillableTech.Contains(slot.Id.Value))
-                    {
-                        slot.Amount = slot.MaxAmount;
-                    }
-
-                    if ((opt.Inventory || opt.Everything) && (slot.Type.InventoryType == "Product" || slot.Type.InventoryType == "Substance"))
-                    {
-                        slot.Amount = slot.MaxAmount;
-                    }
-                }
+                ModifySlots(opt, PrimaryShipInventoryGeneralNode(json).Slots);
+                ModifySlots(opt, PrimaryShipInventoryTechOnlyNode(json).Slots);
             }
         }
 
