@@ -16,7 +16,8 @@ namespace nmssavetool
         exosuit,
         multitool,
         ship,
-        freighter
+        freighter,
+        container
     }
 
     public class CommonOptions
@@ -57,19 +58,19 @@ namespace nmssavetool
     [Verb("modify", HelpText = "Refresh, repair, or refill exosuit, multitool, ship, or freighter inventory.")]
     public class ModifyOptions : BackupOptions
     {
-        [Option('a', "all", HelpText = "Maximize exosuit, multi-tool, ship, and freighter inventory, health, fuel, and energy levels. Repair all damage.")]
+        [Option('a', "all", HelpText = "Maximize exosuit, multi-tool, ship, freighter, and container inventory, health, fuel, and energy levels. Repair all damage.")]
         public bool Everything { get; set; }
 
         [Option('e', "energy", HelpText = "Maximize exosuit, multi-tool, and ship energy and fuel (hyperdrive and launcher) levels.")]
         public bool Energy { get; set; }
 
-        [Option('i', "inventory", HelpText = "Maximize exosuit, multi-tool, ship, and freighter inventory.")]
+        [Option('i', "inventory", HelpText = "Maximize exosuit, multi-tool, ship, freighter, and container inventory.")]
         public bool Inventory { get; set; }
 
         [Option('r', "repair", HelpText = "Repair damage to exosuit, multi-tool, and ship.")]
         public bool Repair { get; set; }
 
-        [Option('t', "apply-to", Separator = '+', Max = 4, Default = new TechGrp[] { TechGrp.exosuit, TechGrp.multitool, TechGrp.ship, TechGrp.freighter }, 
+        [Option('t', "apply-to", Separator = '+', Max = 4, Default = new TechGrp[] { TechGrp.exosuit, TechGrp.multitool, TechGrp.ship, TechGrp.freighter, TechGrp.container }, 
             HelpText = "What to apply changes to.")]
         public IEnumerable<TechGrp> TechGroups { get; set; }
 
@@ -321,9 +322,10 @@ namespace nmssavetool
                 ModifyMultitoolSlots(opt, json);
                 ModifyShipSlots(opt, json);
                 ModifyFreighterSlots(opt, json);
+                ModifyContainerSlots(opt, json);
                 ModifyShipSeed(opt, json);
                 ModifyMultitoolSeed(opt, json);
-                ModifyFreighterSeed(opt, json);
+                ModifyFreighterSeed(opt, json);               
 
                 BackupSave(gsd, opt);
 
@@ -471,6 +473,23 @@ namespace nmssavetool
                        )
                     {
                         slot.Amount = slot.MaxAmount;
+                    }
+                }
+            }
+        }
+
+        private void ModifyContainerSlots(ModifyOptions opt, dynamic json)
+        {
+            if (opt.TechGroups.Contains(TechGrp.container))
+            {
+                LogVerbose("Updating Containers");
+                for (int containerNum = 1; containerNum <= 10; ++containerNum)
+                {
+                    string containerName = string.Format("Chest{0}Inventory", containerNum);
+                    var container = json.PlayerStateData[containerName];
+                    if (container != null)
+                    {
+                        ModifySlots(opt, container.Slots);
                     }
                 }
             }

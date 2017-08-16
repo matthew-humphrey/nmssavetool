@@ -162,6 +162,7 @@ nmssavetool 1.4.2.0
   number. This key is not needed for current versions of the game, so perhaps newer installs are
   no longer naming the directory this way.
 
-###2017-08-13 1.5.0.0
+###2017-08-13 1.4.3.0
 
 * Added support for new NMS 1.3 Exosuit and Ship inventory groups
+* Added support for containers
