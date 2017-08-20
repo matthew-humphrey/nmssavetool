@@ -16,7 +16,7 @@ Run "nmssavetool help" for help.
 ```
 > nmssavetool help
 
-nmssavetool 1.4.2.0
+nmssavetool 1.4.4.0
 
   decrypt    Decrypt the latest game save slot and write it to a formatted JSON file.
 
@@ -41,7 +41,7 @@ Supported commands
 ```
 >nmssavetool.exe help decrypt
 
-nmssavetool 1.4.2.0
+nmssavetool 1.4.4.0
 
   -o, --output       Specifies the file to which the decrypted, formatted game save will be written.
 
@@ -60,7 +60,7 @@ nmssavetool 1.4.2.0
 ```
 >nmssavetool.exe help encrypt
 
-nmssavetool 1.4.2.0
+nmssavetool 1.4.4.0
 
   -i, --input         Specifies the JSON input file which will be encrypted and written to the latest game save slot.
 
@@ -83,19 +83,19 @@ nmssavetool 1.4.2.0
 ```
 >nmssavetool.exe help modify
 
-nmssavetool 1.4.2.0
+nmssavetool 1.4.4.0
 
-  -a, --all                     Maximize exosuit, multi-tool, ship, and freighter inventory, health, fuel, and energy
-                                levels. Repair all damage.
+  -a, --all                     Maximize exosuit, multi-tool, ship, freighter, and container inventory, health, fuel,
+                                and energy levels. Repair all damage.
 
   -e, --energy                  Maximize exosuit, multi-tool, and ship energy and fuel (hyperdrive and launcher)
                                 levels.
 
-  -i, --inventory               Maximize exosuit, multi-tool, ship, and freighter inventory.
+  -i, --inventory               Maximize exosuit, multi-tool, ship, freighter, and container inventory.
 
   -r, --repair                  Repair damage to exosuit, multi-tool, and ship.
 
-  -t, --apply-to                (Default: exosuit multitool ship freighter) What to apply changes to.
+  -t, --apply-to                (Default: exosuit multitool ship freighter container) What to apply changes to.
 
   --v1-format                   When encrypting, use the old NMS V1 format
 
@@ -111,11 +111,15 @@ nmssavetool 1.4.2.0
 
   --set-freighter-seed          Set the seed value for the Freighter.
 
+  --set-units                   Set the player Units.
+
+  --add-units                   Add the specified amount to player Units (negative units will subtract from total).
+
   -b, --backup-dir              If provided, will back up game saves to the specified directory.
 
   -g, --game-mode               Required. Use saves for which game mode (normal|survival|creative|permadeath)
 
-  -s, --save-dir     Path to game save folder (optional - determined automatically if not provided)
+  -s, --save-dir                Path to game save folder (optional - determined automatically if not provided)
 
   -v, --verbose                 Displays additional information during execution.
 
@@ -126,33 +130,14 @@ nmssavetool 1.4.2.0
 
 ##Changelog
 
-###2016-12-30 1.0.0.0
+###2017-08-13 1.4.4.0
 
-* Initial release
+* Added the ability to set or add to the player Units total.
 
-###2016-12-31 1.1.0.0
+###2017-08-13 1.4.3.0
 
-* Added damage repair to Refill Command
-* Switched to a new command-line parsing library
-* Moved to a verb-style command line interface, and provide more fine-grained control over modifications.
-* Minor refactoring to reduce duplicated code
-
-###2017-01-01 1.2.0.1
-
-* Added backup feature
-
-###2017-03-11 1.3.0.0
-
-* Updated to work with new NMS save file format (version 4101) in the NMS Pathfinder update (version 1.2)
-
-###2017-03-12 1.4.0.0
-
-* Added support for GoG game save directory
-* Added support for Permadeath game mode
-
-###2017-03-12 1.4.1.0
-
-* Fixed bug where GoG game save directory detection would only work if a Normal mode game had been saved.
+* Added support for new NMS 1.3 Exosuit and Ship inventory groups
+* Added support for containers
 
 ###2017-03-12 1.4.2.0
 
@@ -162,7 +147,32 @@ nmssavetool 1.4.2.0
   number. This key is not needed for current versions of the game, so perhaps newer installs are
   no longer naming the directory this way.
 
-###2017-08-13 1.4.3.0
+###2017-03-12 1.4.1.0
 
-* Added support for new NMS 1.3 Exosuit and Ship inventory groups
-* Added support for containers
+* Fixed bug where GoG game save directory detection would only work if a Normal mode game had been saved.
+
+###2017-03-12 1.4.0.0
+
+* Added support for GoG game save directory
+* Added support for Permadeath game mode
+
+###2017-03-11 1.3.0.0
+
+* Updated to work with new NMS save file format (version 4101) in the NMS Pathfinder update (version 1.2)
+
+###2017-01-01 1.2.0.1
+
+* Added backup feature
+
+###2016-12-31 1.1.0.0
+
+* Added damage repair to Refill Command
+* Switched to a new command-line parsing library
+* Moved to a verb-style command line interface, and provide more fine-grained control over modifications.
+* Minor refactoring to reduce duplicated code
+
+###2016-12-30 1.0.0.0
+
+* Initial release
+
+
