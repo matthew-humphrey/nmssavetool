@@ -95,11 +95,23 @@ namespace nmssavetool
         [Option("set-freighter-seed", SetName = "freighter-seed", HelpText = "Set the seed value for the Freighter.")]
         public string SetFreighterSeed { get; set; }
 
-        [Option("set-units", HelpText = "Set the player Units.")]
+        [Option("set-units", SetName = "units", HelpText = "Set the player Units.")]
         public uint? SetUnits { get; set; }
 
-        [Option("add-units", HelpText = "Add the specified amount to player Units (negative units will subtract from total).")]
+        [Option("add-units", SetName = "units", HelpText = "Add the specified amount to player Units (negative units will subtract from total).")]
         public int? AddUnits { get; set; }
+
+        [Option("set-galactic-coordinates", SetName="coordinates", HelpText = "Set the player position using the galactic coordinates displayed by signal scanners.")]
+        public string SetGalacticCoordinates{ get; set; }
+
+        [Option("set-portal-coordinates", SetName = "coordinates", HelpText = "Set the player position using portal coordinates.")]
+        public string SetPortalCoordinates { get; set; }
+
+        [Option("set-voxel-coordinates", SetName = "coordinates", HelpText = "Set the player position using the voxel coordinates used within the save-game file. Format is (x,y,z,ssi).")]
+        public string SetVoxelCoordinates { get; set; }
+
+        [Option("set-galaxy", HelpText = "Set the galaxy index (0 = Euclid Galaxy, 1 = Hilbert Dimension, 2 = Calypso Galaxy, etc.)")]
+        public int? SetGalaxy { get; set; }
     }
 
     class Program
@@ -293,6 +305,127 @@ namespace nmssavetool
             }
         }
 
+        private dynamic PrimaryShipNode(dynamic json)
+        {
+            int primaryShipIndex = json.PlayerStateData.PrimaryShip;
+            return json.PlayerStateData.ShipOwnership[primaryShipIndex];
+        }
+
+
+        private void Log(string format, params object[] arg)
+        {
+            LogWriter.WriteLine(format, arg);
+        }
+
+        private void LogVerbose(string format, params object[] arg)
+        {
+            if (Verbose)
+            {
+                LogWriter.WriteLine(format, arg);
+            }
+        }
+
+        private void LogError(string format, params object[] arg)
+        {
+            Console.Error.WriteLine(format, arg);
+        }
+
+        // TODO: Move all save file handling into a separate class
+        private object ReadLatestSaveFile(GameSaveDir gsd, GameModes gameMode)
+        {
+            string metadataPath;
+            string storagePath;
+            uint archiveNumber;
+            ulong? profileKey;
+
+            gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
+
+            LogVerbose("Reading latest {0}-mode save game file from:\n   {1}", gameMode, storagePath);
+
+            string jsonStr = Storage.Read(metadataPath, storagePath, archiveNumber, profileKey);
+
+            return JsonConvert.DeserializeObject(jsonStr);
+        }
+
+        private void WriteLatestSaveFile(GameSaveDir gsd, GameModes gameMode, object json, bool useOldFormat)
+        {
+            string formattedJson = JsonConvert.SerializeObject(json, Formatting.None);
+
+            string metadataPath;
+            string storagePath;
+            uint archiveNumber;
+            ulong? profileKey;
+
+            gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
+
+            LogVerbose("Writing latest {0}-mode save game file to:\n   {1}", gameMode, storagePath);
+            using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(formattedJson)))
+            {
+                Storage.Write(metadataPath, storagePath, ms, archiveNumber, profileKey, useOldFormat);
+                var now = DateTime.Now;
+                File.SetLastWriteTime(metadataPath, now);
+                File.SetLastWriteTime(storagePath, now);
+            }
+        }
+
+        private void BackupSave(GameSaveDir gsd, BackupOptions opt)
+        {
+            if (null != opt.BackupDir)
+            {
+                try
+                {
+                    string backupPath;
+                    bool backupCreated;
+                    gsd.Backup(opt.BackupDir, out backupPath, out backupCreated);
+
+                    if (backupCreated)
+                    {
+                        LogVerbose("Backed up save game files to: {0}", backupPath);
+                    }
+                    else
+                    {
+                        LogVerbose("Backup file already exists: {0}", backupPath);
+                    }
+                }
+                catch (Exception x)
+                {
+                    throw new Exception(string.Format("Error backing up save game files: {0}", x.Message), x);
+                }
+            }
+        }
+
+        private dynamic SuitInventoryGeneralNode(dynamic json)
+        {
+            return json.PlayerStateData.Inventory;
+        }
+        private dynamic SuitInventoryTechOnlyNode(dynamic json)
+        {
+            return json.PlayerStateData.Inventory_TechOnly;
+        }
+        private dynamic SuitInventoryCargoNode(dynamic json)
+        {
+            return json.PlayerStateData.Inventory_Cargo;
+        }
+
+        private dynamic WeaponInventoryNode(dynamic json)
+        {
+            return json.PlayerStateData.WeaponInventory;
+        }
+
+        private dynamic PrimaryShipInventoryGeneralNode(dynamic json)
+        {
+            return PrimaryShipNode(json).Inventory;
+        }
+
+        private dynamic PrimaryShipInventoryTechOnlyNode(dynamic json)
+        {
+            return PrimaryShipNode(json).Inventory_TechOnly;
+        }
+
+        private dynamic FreighterInventoryNode(dynamic json)
+        {
+            return json.PlayerStateData.FreighterInventory;
+        }
 
         private bool RunModify(ModifyOptions opt)
         {
@@ -333,6 +466,8 @@ namespace nmssavetool
                 ModifyMultitoolSeed(opt, json);
                 ModifyFreighterSeed(opt, json);
                 ModifyUnits(opt, json);
+                ModifyCoordinates(opt, json);
+                ModifyGalaxy(opt, json);
 
                 BackupSave(gsd, opt);
 
@@ -380,19 +515,6 @@ namespace nmssavetool
             }
         }
 
-        private dynamic SuitInventoryGeneralNode(dynamic json)
-        {
-            return json.PlayerStateData.Inventory;
-        }
-        private dynamic SuitInventoryTechOnlyNode(dynamic json)
-        {
-            return json.PlayerStateData.Inventory_TechOnly;
-        }
-        private dynamic SuitInventoryCargoNode(dynamic json)
-        {
-            return json.PlayerStateData.Inventory_Cargo;
-        }
-
         private void ModifyExosuitSlots(ModifyOptions opt, dynamic json)
         {
             if (opt.TechGroups.Contains(TechGrp.exosuit))
@@ -409,11 +531,6 @@ namespace nmssavetool
                 ModifySlots(opt, SuitInventoryTechOnlyNode(json).Slots);
                 ModifySlots(opt, SuitInventoryCargoNode(json).Slots);
             }
-        }
-
-        private dynamic WeaponInventoryNode(dynamic json)
-        {
-            return json.PlayerStateData.WeaponInventory;
         }
 
         private void ModifyMultitoolSlots(ModifyOptions opt, dynamic json)
@@ -436,16 +553,6 @@ namespace nmssavetool
             }
         }
 
-        private dynamic PrimaryShipInventoryGeneralNode(dynamic json)
-        {
-            return PrimaryShipNode(json).Inventory;
-        }
-
-        private dynamic PrimaryShipInventoryTechOnlyNode(dynamic json)
-        {
-            return PrimaryShipNode(json).Inventory_TechOnly;
-        }
-
         private void ModifyShipSlots(ModifyOptions opt, dynamic json)
         {
             if (opt.TechGroups.Contains(TechGrp.ship))
@@ -460,11 +567,6 @@ namespace nmssavetool
                 ModifySlots(opt, PrimaryShipInventoryGeneralNode(json).Slots);
                 ModifySlots(opt, PrimaryShipInventoryTechOnlyNode(json).Slots);
             }
-        }
-
-        private dynamic FreighterInventoryNode(dynamic json)
-        {
-            return json.PlayerStateData.FreighterInventory;
         }
 
         private void ModifyFreighterSlots(ModifyOptions opt, dynamic json)
@@ -498,32 +600,6 @@ namespace nmssavetool
                     {
                         ModifySlots(opt, container.Slots);
                     }
-                }
-            }
-        }
-
-        private void BackupSave(GameSaveDir gsd, BackupOptions opt)
-        {
-            if (null != opt.BackupDir)
-            {
-                try
-                {
-                    string backupPath;
-                    bool backupCreated;
-                    gsd.Backup(opt.BackupDir, out backupPath, out backupCreated);
-
-                    if (backupCreated)
-                    {
-                        LogVerbose("Backed up save game files to: {0}", backupPath);
-                    }
-                    else
-                    {
-                        LogVerbose("Backup file already exists: {0}", backupPath);
-                    }
-                }
-                catch (Exception x)
-                {
-                    throw new Exception(string.Format("Error backing up save game files: {0}", x.Message), x);
                 }
             }
         }
@@ -644,68 +720,48 @@ namespace nmssavetool
             }
         }
 
-        private dynamic PrimaryShipNode(dynamic json)
+        private void ModifyCoordinates(ModifyOptions opt, dynamic json)
         {
-            int primaryShipIndex = json.PlayerStateData.PrimaryShip;
-            return json.PlayerStateData.ShipOwnership[primaryShipIndex];
-        }
-
-
-        private void Log(string format, params object[] arg)
-        {
-            LogWriter.WriteLine(format, arg);
-        }
-
-        private void LogVerbose(string format, params object[] arg)
-        {
-            if (Verbose)
+            if (opt.SetGalacticCoordinates != null)
             {
-                LogWriter.WriteLine(format, arg);
+                SetCoordinates(opt, json, NmsVoxelCoordinates.FromGalacticCoordinateString(opt.SetGalacticCoordinates), opt.SetGalacticCoordinates);
+            }
+            else if (opt.SetPortalCoordinates != null)
+            {
+                SetCoordinates(opt, json, NmsVoxelCoordinates.FromPortalCoordinateString(opt.SetPortalCoordinates), opt.SetPortalCoordinates);
+            }
+            else if (opt.SetVoxelCoordinates != null)
+            {
+                SetCoordinates(opt, json, NmsVoxelCoordinates.FromVoxelCoordinateString(opt.SetVoxelCoordinates), opt.SetVoxelCoordinates);
             }
         }
 
-        private void LogError(string format, params object[] arg)
+        private void ModifyGalaxy(ModifyOptions opt, dynamic json)
         {
-            Console.Error.WriteLine(format, arg);
-        }
-
-        // TODO: Move all save file handling into a separate class
-        private object ReadLatestSaveFile(GameSaveDir gsd, GameModes gameMode)
-        {
-            string metadataPath;
-            string storagePath;
-            uint archiveNumber;
-            ulong? profileKey;
-
-            gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
-
-            LogVerbose("Reading latest {0}-mode save game file from:\n   {1}", gameMode, storagePath);
-
-            string jsonStr = Storage.Read(metadataPath, storagePath, archiveNumber, profileKey);
-
-            return JsonConvert.DeserializeObject(jsonStr);
-        }
-
-        private void WriteLatestSaveFile(GameSaveDir gsd, GameModes gameMode, object json, bool useOldFormat)
-        {
-            string formattedJson = JsonConvert.SerializeObject(json, Formatting.None);
-
-            string metadataPath;
-            string storagePath;
-            uint archiveNumber;
-            ulong? profileKey;
-
-            gsd.FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
-
-            LogVerbose("Writing latest {0}-mode save game file to:\n   {1}", gameMode, storagePath);
-            using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(formattedJson)))
+            if (opt.SetGalaxy.HasValue)
             {
-                Storage.Write(metadataPath, storagePath, ms, archiveNumber, profileKey, useOldFormat);
-                var now = DateTime.Now;
-                File.SetLastWriteTime(metadataPath, now);
-                File.SetLastWriteTime(storagePath, now);
-            }
+                LogVerbose("Changing player galaxy from {0} to {1}", json.PlayerStateData.UniverseAddress.RealityIndex, opt.SetGalaxy.Value);
+                json.PlayerStateData.UniverseAddress.RealityIndex = opt.SetGalaxy.Value;
+                LogVerbose("Changing LastKnownPlayerState from {0} to InShip", json.SpawnStateData.LastKnownPlayerState);
+                json.SpawnStateData.LastKnownPlayerState = "InShip";
+            }       
         }
 
+        private void SetCoordinates(ModifyOptions opt, dynamic json, NmsVoxelCoordinates coordinates, string cordinatesStr)
+        {
+            var galacticAddress = json.PlayerStateData.UniverseAddress.GalacticAddress;
+            if (opt.Verbose)
+            {
+                var originalCoordinates = new NmsVoxelCoordinates((int)galacticAddress.VoxelX, (int)galacticAddress.VoxelY, (int)galacticAddress.VoxelZ, (int)galacticAddress.SolarSystemIndex);
+                LogVerbose("Changing player coordinates from:\n  {0}\nto:\n  {1}\n  {2}", originalCoordinates, cordinatesStr, coordinates);
+            }
+            galacticAddress.VoxelX = coordinates.X;
+            galacticAddress.VoxelY = coordinates.Y;
+            galacticAddress.VoxelZ = coordinates.Z;
+            galacticAddress.SolarSystemIndex = coordinates.SolarSystemIndex;
+            galacticAddress.PlanetIndex = 0;
+            LogVerbose("Changing LastKnownPlayerState from {0} to InShip", json.SpawnStateData.LastKnownPlayerState);
+            json.SpawnStateData.LastKnownPlayerState = "InShip";
+        }
     }
 }

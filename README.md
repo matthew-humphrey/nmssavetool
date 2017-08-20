@@ -16,7 +16,7 @@ Run "nmssavetool help" for help.
 ```
 > nmssavetool help
 
-nmssavetool 1.4.4.0
+nmssavetool 1.5.5.0
 
   decrypt    Decrypt the latest game save slot and write it to a formatted JSON file.
 
@@ -41,7 +41,7 @@ Supported commands
 ```
 >nmssavetool.exe help decrypt
 
-nmssavetool 1.4.4.0
+nmssavetool 1.5.5.0
 
   -o, --output       Specifies the file to which the decrypted, formatted game save will be written.
 
@@ -60,7 +60,7 @@ nmssavetool 1.4.4.0
 ```
 >nmssavetool.exe help encrypt
 
-nmssavetool 1.4.4.0
+nmssavetool 1.5.5.0
 
   -i, --input         Specifies the JSON input file which will be encrypted and written to the latest game save slot.
 
@@ -83,7 +83,7 @@ nmssavetool 1.4.4.0
 ```
 >nmssavetool.exe help modify
 
-nmssavetool 1.4.4.0
+nmssavetool 1.5.0.0
 
   -a, --all                     Maximize exosuit, multi-tool, ship, freighter, and container inventory, health, fuel,
                                 and energy levels. Repair all damage.
@@ -115,6 +115,16 @@ nmssavetool 1.4.4.0
 
   --add-units                   Add the specified amount to player Units (negative units will subtract from total).
 
+  --set-galactic-coordinates    Set the player position using the galactic coordinates displayed by signal scanners.
+
+  --set-portal-coordinates      Set the player position using portal coordinates.
+
+  --set-voxel-coordinates       Set the player position using the voxel coordinates used within the save-game file.
+                                Format is (x,y,z,ssi).
+
+  --set-galaxy                  Set the galaxy index (0 = Euclid Galaxy, 1 = Hilbert Dimension, 2 = Calypso Galaxy,
+                                etc.)
+
   -b, --backup-dir              If provided, will back up game saves to the specified directory.
 
   -g, --game-mode               Required. Use saves for which game mode (normal|survival|creative|permadeath)
@@ -130,7 +140,13 @@ nmssavetool 1.4.4.0
 
 ##Changelog
 
-###2017-08-13 1.4.4.0
+###2017-08-20 1.5.0.0
+
+* New modify command options, set_galactic-coordinates, set-portal-coordinates, and set-voxel-coordinates allow 
+  movement of the player position within the current galaxy
+* New modify command option, set-galaxy, allows the player to change the current galaxy.
+
+###2017-08-19 1.4.4.0
 
 * Added the ability to set or add to the player Units total.
 
