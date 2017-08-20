@@ -94,6 +94,12 @@ namespace nmssavetool
 
         [Option("set-freighter-seed", SetName = "freighter-seed", HelpText = "Set the seed value for the Freighter.")]
         public string SetFreighterSeed { get; set; }
+
+        [Option("set-units", HelpText = "Set the player Units.")]
+        public uint? SetUnits { get; set; }
+
+        [Option("add-units", HelpText = "Add the specified amount to player Units (negative units will subtract from total).")]
+        public int? AddUnits { get; set; }
     }
 
     class Program
@@ -325,7 +331,8 @@ namespace nmssavetool
                 ModifyContainerSlots(opt, json);
                 ModifyShipSeed(opt, json);
                 ModifyMultitoolSeed(opt, json);
-                ModifyFreighterSeed(opt, json);               
+                ModifyFreighterSeed(opt, json);
+                ModifyUnits(opt, json);
 
                 BackupSave(gsd, opt);
 
@@ -578,6 +585,32 @@ namespace nmssavetool
                 string seedStr = string.Format("0x{0:X16}", seed);
                 LogVerbose("Setting multitool seed to: {0}", seedStr);
                 json.PlayerStateData.CurrentWeapon.GenerationSeed[1] = seedStr;
+            }
+        }
+
+        private void ModifyUnits(ModifyOptions opt, dynamic json)
+        {
+            if (opt.SetUnits.HasValue)
+            {
+                int newUnits = (int)Math.Min((uint)int.MaxValue, opt.SetUnits.Value);
+                LogVerbose("Setting Units to: {0}", newUnits);
+                json.PlayerStateData.Units = newUnits;
+            }
+            else if (opt.AddUnits.HasValue && opt.AddUnits.Value != 0)
+            {
+                int currentUnits = json.PlayerStateData.Units;
+                if (opt.AddUnits.Value < 0)
+                {
+                    int newUnits = (int)Math.Max(0L, (Int64)currentUnits + (Int64)opt.AddUnits.Value);
+                    LogVerbose("Adding {0} Units. New value: {1}", opt.AddUnits.Value, newUnits);
+                    json.PlayerStateData.Units = newUnits;
+                }
+                else
+                {
+                    int newUnits = (int)Math.Min((uint)int.MaxValue, (uint)currentUnits + (uint)opt.AddUnits.Value);
+                    LogVerbose("Adding {0} Units. New value: {1}", opt.AddUnits.Value, newUnits);
+                    json.PlayerStateData.Units = newUnits;
+                }
             }
         }
 
