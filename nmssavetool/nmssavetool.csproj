@@ -83,12 +83,6 @@
     <Compile Include="XXTEA.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\LICENSE">
-      <Link>LICENSE</Link>
-    </None>
-    <None Include="..\..\README.md">
-      <Link>README.md</Link>
-    </None>
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
