@@ -140,6 +140,12 @@ nmssavetool 1.5.0.0
 
 ##Changelog
 
+###2017-08-27 1.6.0.0
+
+* Backup command now also writes a decrypted, formatted JSON file. This makes it easy to 
+  restore a backup by simply using the encrypt command with one of these JSON files as input.
+* Backup command now includes the game mode in the output file name.
+
 ###2017-08-20 1.5.0.0
 
 * New modify command options, set_galactic-coordinates, set-portal-coordinates, and set-voxel-coordinates allow 

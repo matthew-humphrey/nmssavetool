@@ -188,23 +188,20 @@ namespace nmssavetool
             }
         }
 
-        public void Backup(string backupDir, out string archivePath, out bool backupCreated)
+        public bool ArchiveTo(string archivePath)
         {
-            string archiveDirName = "nmssavetool-backup-" + FindMostRecentSaveDateTime().ToString("yyyyMMdd-HHmmss") + ".zip";
-            archivePath = Path.Combine(backupDir, archiveDirName);            
-
             if (File.Exists(archivePath))
             {
-                backupCreated = false;
+                return false;
             }
             else
             {
                 ZipFile.CreateFromDirectory(_savePath, archivePath);
-                backupCreated = true;
+                return true;
             }            
         }
 
-        private DateTime FindMostRecentSaveDateTime()
+        public DateTime FindMostRecentSaveDateTime()
         {
             var saveFiles = Directory.EnumerateFiles(_savePath, "*.hg");
             return (from saveFile in saveFiles select File.GetLastWriteTime(saveFile)).Max();

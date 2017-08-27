@@ -132,23 +132,11 @@ namespace nmssavetool
         private Random _random;
 
         static void Main(string[] args)
-        {            
-            Program program = null;
-            try
-            {
-                program = new Program();
-                bool success = program.Run(args);
-                if (success)
-                {
-                    Console.WriteLine("Success");
-                }
-                Environment.Exit(success ? 0 : 1);
-            }
-            catch (Exception x)
-            {
-                Console.Error.WriteLine(x.Message);
-                Environment.Exit(-1);
-            }
+        {
+            Program program = new Program();
+
+            int exitCode = program.Run(args);
+            Environment.Exit(exitCode);
         }
 
         Program()
@@ -163,17 +151,32 @@ namespace nmssavetool
         public bool Verbose { get; set; }
 
 
-        public bool Run(IEnumerable<string> args)
+        public int Run(IEnumerable<string> args)
         {
-            var result = CommandLine.Parser.Default.ParseArguments<DecryptOptions, EncryptOptions, ModifyOptions>(args);
-            
-            bool success = result.MapResult(
-                (DecryptOptions opt) => RunDecrypt(opt),
-                (EncryptOptions opt) => RunEncrypt(opt),
-                (ModifyOptions opt) => RunModify(opt),
-                _ => false);
+            bool success = true;
 
-            return success;
+            try
+            {
+                var result = CommandLine.Parser.Default.ParseArguments<DecryptOptions, EncryptOptions, ModifyOptions>(args);
+
+                success = result.MapResult(
+                    (DecryptOptions opt) => RunDecrypt(opt),
+                    (EncryptOptions opt) => RunEncrypt(opt),
+                    (ModifyOptions opt) => RunModify(opt),
+                    _ => false);
+
+                if (success)
+                {
+                    Log("Success");
+                }
+            }
+            catch (Exception x)
+            {
+                Console.Error.WriteLine(x.Message);
+                success = false;
+            }
+
+            return success ? 0 : -1;
         }
 
         private void DoCommon(CommonOptions opt)
@@ -202,10 +205,15 @@ namespace nmssavetool
                 return false;
             }
 
+            return DecryptLatestTo(gsd, opt.GameMode, opt.OutputPath);
+        }
+
+        private bool DecryptLatestTo(GameSaveDir gsd, GameModes gameMode, string outputPath)
+        {
             object json;
             try
             {
-                json = ReadLatestSaveFile(gsd, opt.GameMode);
+                json = ReadLatestSaveFile(gsd, gameMode);
             }
             catch (Exception x)
             {
@@ -225,10 +233,10 @@ namespace nmssavetool
                 return false;
             }
 
-            LogVerbose("Writing formatted JSON to:\n   {0}", opt.OutputPath);
+            LogVerbose("Writing formatted JSON to:\n   {0}", outputPath);
             try
             {
-                File.WriteAllText(opt.OutputPath, formattedJson);
+                File.WriteAllText(outputPath, formattedJson);
             }
             catch (Exception x)
             {
@@ -374,17 +382,21 @@ namespace nmssavetool
             {
                 try
                 {
-                    string backupPath;
-                    bool backupCreated;
-                    gsd.Backup(opt.BackupDir, out backupPath, out backupCreated);
-
-                    if (backupCreated)
+                    var baseName = string.Format("nmssavetool-backup-{0}-{1}", opt.GameMode, gsd.FindMostRecentSaveDateTime().ToString("yyyyMMdd-HHmmss"));
+                    var basePath = Path.Combine(opt.BackupDir, baseName);
+                    var zipPath = basePath + ".zip";
+                                        
+                    if (gsd.ArchiveTo(zipPath))
                     {
-                        LogVerbose("Backed up save game files to: {0}", backupPath);
+                        Log("Backed up save game files to: {0}", zipPath);
+
+                        var jsonPath = basePath + ".json";
+                        DecryptLatestTo(gsd, opt.GameMode, jsonPath);
+                        Log("Backed up decrypted JSON to: {0}", jsonPath);
                     }
                     else
                     {
-                        LogVerbose("Backup file already exists: {0}", backupPath);
+                        Log("Skipping backup because backup file already exists: {0}", zipPath);
                     }
                 }
                 catch (Exception x)
