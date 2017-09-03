@@ -140,11 +140,13 @@ nmssavetool 1.5.0.0
 
 ##Changelog
 
-###2017-08-27 1.6.0.0
+###2017-09-02 1.6.0.0
 
-* Backup command now also writes a decrypted, formatted JSON file. This makes it easy to 
+* New verb: info. This can be used to dump information about the most recent game save, including
+  the player's position and inventory contents.
+* Backup now also writes a decrypted, formatted JSON file. This makes it easy to 
   restore a backup by simply using the encrypt command with one of these JSON files as input.
-* Backup command now includes the game mode in the output file name.
+* Backup now includes the game mode in the output file name.
 
 ###2017-08-20 1.5.0.0
 
@@ -197,4 +199,13 @@ nmssavetool 1.5.0.0
 
 * Initial release
 
+===============================================
+
+Many thanks to the authors of the following software libraries used by nmssavetool:
+
+* CsvHelper - http://joshclose.github.io/CsvHelper/
+* Json.NET (NewtonSoft) - https://www.newtonsoft.com/json
+
+I would also like to thank No Man's Sky mod maker 'nomansuniverse' and 'Mjjstral', who discovered how to 
+decrypt the V1 format NMS save files.
 

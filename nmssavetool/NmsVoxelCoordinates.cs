@@ -182,7 +182,7 @@ namespace nmssavetool
 
         public string ToPortalCoordinateString()
         {
-            return string.Format("?{0:X3}{1:X2}{2:X3}{3:X3}", SolarSystemIndex, (Y & 0xFF), (Z & 0xFFF), (X & 0xFFF));
+            return string.Format("0{0:X3}{1:X2}{2:X3}{3:X3}", SolarSystemIndex, (Y & 0xFF), (Z & 0xFFF), (X & 0xFFF));
         }
 
         public static NmsVoxelCoordinates FromPortalCoordinateString(string portalCoordinateStr)

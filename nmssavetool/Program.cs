@@ -20,6 +20,33 @@ namespace nmssavetool
         container
     }
 
+    public enum InvGrp
+    {
+        all,
+        exosuit,
+        exosuit_general,
+        exosuit_tech,
+        exosuit_cargo,
+        ship,
+        ship_general,
+        ship_tech,
+        freighter,
+        freighter_general,
+        freighter_tech,
+        multitool
+    }
+
+    public enum InvType
+    {
+        all,
+        all_but_empty,
+        substance,
+        product,
+        tech,
+        non_tech,
+        empty
+    }
+
     public class CommonOptions
     {
         [Option('g', "game-mode", Required = true, HelpText = "Use saves for which game mode (normal|survival|creative|permadeath)")]
@@ -70,7 +97,7 @@ namespace nmssavetool
         [Option('r', "repair", HelpText = "Repair damage to exosuit, multi-tool, and ship.")]
         public bool Repair { get; set; }
 
-        [Option('t', "apply-to", Separator = '+', Max = 4, Default = new TechGrp[] { TechGrp.exosuit, TechGrp.multitool, TechGrp.ship, TechGrp.freighter, TechGrp.container }, 
+        [Option('t', "apply-to", Separator = '+', Max = 5, Default = new TechGrp[] { TechGrp.exosuit, TechGrp.multitool, TechGrp.ship, TechGrp.freighter, TechGrp.container }, 
             HelpText = "What to apply changes to.")]
         public IEnumerable<TechGrp> TechGroups { get; set; }
 
@@ -114,6 +141,24 @@ namespace nmssavetool
         public int? SetGalaxy { get; set; }
     }
 
+    [Verb("info", HelpText = "Display information about a game save.")]
+    public class InfoOptions : CommonOptions
+    {
+        [Option("no-basic", Default = false, HelpText = "Omits display of basic game-save information such as player stats and position.")]
+        public bool NoBasic { get; set; }
+
+        [Option('i', "show-inventory", Default = false, HelpText = "Display the contents of the specified inventory groups.")]
+        public bool ShowInventory { get; set; }
+
+        [Option('w', "inventory-groups", Separator = '+', Default = new InvGrp[] { InvGrp.all }, 
+            HelpText = "Display the contents of the specified inventory groups.")]
+        public IEnumerable<InvGrp> InventoryGroups { get; set; }
+
+        [Option('t', "types", Separator = '+', Default = new InvType[] { InvType.all_but_empty },
+            HelpText = "Which inventory types to include (all,all_but_empty,product,substance,tech,non_tech,empty).")]
+        public IEnumerable<InvType> InventoryTypes { get; set; }
+    }
+
     class Program
     {
         readonly string[] REFILLABLE_TECH = {
@@ -130,6 +175,21 @@ namespace nmssavetool
 
         private HashSet<string> _refillableTech;
         private Random _random;
+        private InventoryCodes _invCodes;
+
+        private InventoryCodes InvCodes
+        {
+            get
+            {
+                if (_invCodes == null)
+                {
+                    _invCodes = new InventoryCodes();
+                    _invCodes.LoadFromDefaultCsvFile();
+                }
+
+                return _invCodes;
+            }
+        }
 
         static void Main(string[] args)
         {
@@ -157,18 +217,14 @@ namespace nmssavetool
 
             try
             {
-                var result = CommandLine.Parser.Default.ParseArguments<DecryptOptions, EncryptOptions, ModifyOptions>(args);
+                var result = CommandLine.Parser.Default.ParseArguments<DecryptOptions, EncryptOptions, ModifyOptions, InfoOptions>(args);
 
                 success = result.MapResult(
                     (DecryptOptions opt) => RunDecrypt(opt),
                     (EncryptOptions opt) => RunEncrypt(opt),
                     (ModifyOptions opt) => RunModify(opt),
+                    (InfoOptions opt) => RunInfo(opt),
                     _ => false);
-
-                if (success)
-                {
-                    Log("Success");
-                }
             }
             catch (Exception x)
             {
@@ -177,6 +233,210 @@ namespace nmssavetool
             }
 
             return success ? 0 : -1;
+        }
+
+        private bool RunInfo(InfoOptions opt)
+        {
+            try
+            {
+                DoCommon(opt);
+
+                GameSaveDir gsd;
+                try
+                {
+                    gsd = new GameSaveDir(opt.SaveDir);
+                }
+                catch (Exception x)
+                {
+                    LogError("Error locating game save file:\n{0}", x.Message);
+                    return false;
+                }
+
+                dynamic json;
+                try
+                {
+                    json = ReadLatestSaveFile(gsd, opt.GameMode);
+                }
+                catch (Exception x)
+                {
+                    LogError("Error loading or parsing save file:\n{0}", x.Message);
+                    return false;
+                }
+
+                // Dump basic player info
+                InfoBasic(opt, json);
+
+                // Dump inventory info
+                InfoInventory(opt, json);
+            }
+            catch (Exception x)
+            {
+                LogError(x.Message);
+                return false;
+            }
+
+            return true;
+        }
+
+        private void InfoBasic(InfoOptions opt, dynamic json)
+        {
+            if (!opt.NoBasic)
+            {
+                var galacticAddress = json.PlayerStateData.UniverseAddress.GalacticAddress;
+                var coordinates = new NmsVoxelCoordinates((int)galacticAddress.VoxelX, (int)galacticAddress.VoxelY, (int)galacticAddress.VoxelZ, (int)galacticAddress.SolarSystemIndex);
+                Log("Save file for game mode: {0}", opt.GameMode);
+                Log("  Save file version: {0}", json.Version);
+                Log("  Platform: {0}", json.Platform);
+                Log("  Health: {0}", json.PlayerStateData.Health);
+                Log("  Ship Health: {0}", json.PlayerStateData.ShipHealth);
+                Log("  Shield: {0}", json.PlayerStateData.Shield);
+                Log("  Ship Shield: {0}", json.PlayerStateData.ShipShield);
+                Log("  Energy: {0}", json.PlayerStateData.Energy);
+                Log("  Units: {0:N0}", json.PlayerStateData.Units);
+                Log("  Coordinates (x,y,z,ssi): {0}", coordinates.ToVoxelCoordinateString());
+                Log("  Coordinates (galactic): {0}", coordinates.ToGalacticCoordinateString());
+                Log("  Coordinates (portal): {0}", coordinates.ToPortalCoordinateString());
+            }
+        }
+
+        private void InfoInventory(InfoOptions opt, dynamic json)
+        {
+            if (opt.ShowInventory)
+            {
+                if (opt.InventoryGroups.Contains(InvGrp.all) || opt.InventoryGroups.Contains(InvGrp.exosuit) || opt.InventoryGroups.Contains(InvGrp.exosuit_general))
+                {
+                    // Dump exosuit general inventory
+                    InfoInventoryGroup("Exosuit General", SuitInventoryGeneralNode(json), opt.InventoryTypes);
+                }
+                if (opt.InventoryGroups.Contains(InvGrp.all) || opt.InventoryGroups.Contains(InvGrp.exosuit) || opt.InventoryGroups.Contains(InvGrp.exosuit_cargo))
+                {
+                    // Dump exosuit cargo inventory
+                    InfoInventoryGroup("Exosuit Cargo", SuitInventoryCargoNode(json), opt.InventoryTypes);
+                }
+                if (opt.InventoryGroups.Contains(InvGrp.all) || opt.InventoryGroups.Contains(InvGrp.exosuit) || opt.InventoryGroups.Contains(InvGrp.exosuit_tech))
+                {
+                    // Dump exosuit tech inventory
+                    InfoInventoryGroup("Exosuit Tech-Only", SuitInventoryTechOnlyNode(json), opt.InventoryTypes);
+                }
+                if (opt.InventoryGroups.Contains(InvGrp.all) || opt.InventoryGroups.Contains(InvGrp.ship) || opt.InventoryGroups.Contains(InvGrp.ship_general))
+                {
+                    // Dump ship general inventory
+                    InfoInventoryGroup("Ship General", PrimaryShipInventoryGeneralNode(json), opt.InventoryTypes);
+                }
+                if (opt.InventoryGroups.Contains(InvGrp.all) || opt.InventoryGroups.Contains(InvGrp.ship) || opt.InventoryGroups.Contains(InvGrp.ship_tech))
+                {
+                    // Dump ship techonly inventory
+                    InfoInventoryGroup("Ship Tech-Only", PrimaryShipInventoryTechOnlyNode(json), opt.InventoryTypes);
+                }
+                if (opt.InventoryGroups.Contains(InvGrp.all) || opt.InventoryGroups.Contains(InvGrp.freighter) || opt.InventoryGroups.Contains(InvGrp.freighter_general))
+                {
+                    // Dump freighter general inventory
+                    InfoInventoryGroup("Freighter General", json.PlayerStateData.FreighterInventory, opt.InventoryTypes);
+                }
+                if (opt.InventoryGroups.Contains(InvGrp.all) || opt.InventoryGroups.Contains(InvGrp.freighter) || opt.InventoryGroups.Contains(InvGrp.freighter_tech))
+                {
+                    // Dump freighter tech-only inventory
+                    InfoInventoryGroup("Freighter Tech-Only", json.PlayerStateData.FreighterInventory_TechOnly, opt.InventoryTypes);
+                }
+                if (opt.InventoryGroups.Contains(InvGrp.all) || opt.InventoryGroups.Contains(InvGrp.multitool))
+                {
+                    // Dump multitool inventory
+                    InfoInventoryGroup("Weapon", json.PlayerStateData.WeaponInventory, opt.InventoryTypes);
+                }
+            }
+        }
+
+        private void InfoInventoryGroup(string groupName, dynamic json, IEnumerable<InvType> types)
+        {
+            if (null == json)
+            {
+                return;
+            }
+
+            int width = (int)json.Width;
+            int height = (int)json.Height;
+
+            bool showAllNonEmpty = types.Contains(InvType.all) || types.Contains(InvType.all_but_empty);
+            bool showNonTech = types.Contains(InvType.non_tech);
+            bool showEmpty = types.Contains(InvType.empty) || types.Contains(InvType.all);
+            bool showTech = types.Contains(InvType.tech) || showAllNonEmpty;
+            bool showProduct = types.Contains(InvType.product) || showAllNonEmpty || showNonTech;
+            bool showSubstance = types.Contains(InvType.substance) || showAllNonEmpty || showNonTech;
+
+            Log("Inventory group: {0}, [H,W]=[{1},{2}]", groupName, height, width);
+
+            dynamic[,] slots = new dynamic[height, width];
+            foreach (var slot in json.Slots)
+            {
+                slots[slot.Index.Y, slot.Index.X] = slot;
+            }
+
+            for (int row = 0; row < height; ++row)
+            {
+                for (int col = 0; col < width; ++col)
+                {
+                    var slot = slots[row, col];
+
+                    if (slot != null)
+                    {
+                        InventoryCode invCode = InvCodes[slot.Id.Value];
+                        if (slot.Type.InventoryType == "Technology" && showTech)
+                        {
+                            if ((float)slot.DamageFactor != 0.0)
+                            {
+                                Log("  [{0},{1}] {3} ({2}), damage: {4:p0} <{5}>", row + 1, col + 1, invCode.Name, FormatSlotId(slot.Id), (float)slot.DamageFactor*100.0, invCode.Type);
+                            }
+                            else
+                            {
+                                Log("  [{0},{1}] {3} ({2}) <{4}>", row + 1, col + 1, FormatSlotId(slot.Id), invCode.Name, invCode.Type);
+                            }                            
+                        }
+                        else if (slot.Type.InventoryType == "Substance" && showSubstance)
+                        {
+                            Log("  [{0},{1}] {3} ({2}), {4}/{5}  <{6}>", row + 1, col + 1, FormatSlotId(slot.Id), invCode.Name, (int)slot.Amount, (int)slot.MaxAmount, invCode.Type);
+                        }
+                        else if (slot.Type.InventoryType == "Product" && showProduct)
+                        {
+                            Log("  [{0},{1}] {3} ({2}), {4}/{5} <{6}>", row + 1, col + 1, FormatSlotId(slot.Id), invCode.Name, (int)slot.Amount, (int)slot.MaxAmount, invCode.Type);
+                        }
+                    }
+                    else if (showEmpty)
+                    {
+                        Log("  [{0},{1}] <Empty>", row + 1, col + 1);
+                    }
+                }
+            }
+        }
+
+        private string FormatSlotId(dynamic id)
+        {
+            string idStr = (string)id;
+            if (idStr == null)
+            {
+                return string.Empty;
+            }
+
+            if (idStr.StartsWith("^"))
+            {
+                return idStr.Substring(1);
+            }
+
+            return idStr;
+        }
+
+        private string ProductSlotDescription(dynamic slot)
+        {
+            throw new NotImplementedException();
+        }
+
+        private string SubstanceSlotDescription(dynamic slot)
+        {
+            throw new NotImplementedException();
+        }
+
+        private string TechnologySlotDescription(dynamic slot)
+        {
+            throw new NotImplementedException();
         }
 
         private void DoCommon(CommonOptions opt)
@@ -463,7 +723,7 @@ namespace nmssavetool
                 }
                 catch (Exception x)
                 {
-                    Console.WriteLine("Error loading or parsing save file: {0}", x.Message);
+                    LogError("Error loading or parsing save file: {0}", x.Message);
                     return false;
                 }
 
