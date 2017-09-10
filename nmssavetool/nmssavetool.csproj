@@ -79,9 +79,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="GameSaveDir.cs" />
-    <Compile Include="InventoryCodes.cs" />
-    <Compile Include="NmsVoxelCoordinates.cs" />
+    <Compile Include="GameSave.cs" />
+    <Compile Include="GameSaveManager.cs" />
+    <Compile Include="Inventory.cs" />
+    <Compile Include="InventoryItemTypes.cs" />
+    <Compile Include="Options.cs" />
+    <Compile Include="VoxelCoordinates.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Storage.cs" />
@@ -92,7 +95,7 @@
       <Link>README.md</Link>
     </None>
     <None Include="App.config" />
-    <None Include="InventoryCodes.csv" />
+    <None Include="InventoryItemTypes.csv" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
@@ -113,7 +116,7 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>copy $(SolutionDir)README.md $(TargetDir)
-copy $(ProjectDir)InventoryCodes.csv $(TargetDir)
+copy $(ProjectDir)InventoryItemTypes.csv $(TargetDir)
 del $(TargetDir)FSharp.*</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
