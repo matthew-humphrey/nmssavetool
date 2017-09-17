@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 
 namespace nmssavetool
 {
-    public class NmsVoxelCoordinates
+    public class VoxelCoordinates
     {
         private int x;
 
@@ -82,7 +82,7 @@ namespace nmssavetool
             }
         }
 
-        public NmsVoxelCoordinates(int x, int y, int z, int solarSystemIndex)
+        public VoxelCoordinates(int x, int y, int z, int solarSystemIndex)
         {
             X = x;
             Y = y;
@@ -90,7 +90,7 @@ namespace nmssavetool
             SolarSystemIndex = solarSystemIndex;
         }
 
-        public NmsVoxelCoordinates()
+        public VoxelCoordinates()
         {
             X = 0;
             Y = 0;
@@ -108,9 +108,9 @@ namespace nmssavetool
             return string.Format("{0:X4}:{1:X4}:{2:X4}:{3:X4}", (x + 2047), (y + 127), (z + 2047), solarSystemIndex);
         }
 
-        public static NmsVoxelCoordinates FromGalacticCoordinateString(string nmsHexCoordinates)
+        public static VoxelCoordinates FromGalacticCoordinateString(string nmsHexCoordinates)
         {
-            NmsVoxelCoordinates coordinates = null;
+            VoxelCoordinates coordinates = null;
 
             string[] parts = nmsHexCoordinates.Split(':');
             if (parts.Length == 5)
@@ -124,7 +124,7 @@ namespace nmssavetool
 
             try
             {
-                coordinates = new NmsVoxelCoordinates(
+                coordinates = new VoxelCoordinates(
                     Convert.ToInt32(parts[0], 16) - 2047,
                     Convert.ToInt32(parts[1], 16) - 127,
                     Convert.ToInt32(parts[2], 16) - 2047,
@@ -148,9 +148,9 @@ namespace nmssavetool
             return string.Format("({0},{1},{2},{3})", X, Y, Z, SolarSystemIndex);
         }
 
-        public static NmsVoxelCoordinates FromVoxelCoordinateString(string voxelCoordinateStr)
+        public static VoxelCoordinates FromVoxelCoordinateString(string voxelCoordinateStr)
         {
-            NmsVoxelCoordinates coordinates = null;
+            VoxelCoordinates coordinates = null;
 
             var match = Regex.Match(voxelCoordinateStr, @"\(?(?<X>[+-]?\d+),(?<Y>[+-]?\d+),(?<Z>[+-]?\d+),(?<SSI>[+-]?\d+)\)?");
 
@@ -161,7 +161,7 @@ namespace nmssavetool
 
             try
             {
-                coordinates = new NmsVoxelCoordinates(
+                coordinates = new VoxelCoordinates(
                     Convert.ToInt32(match.Groups["X"].Value),
                     Convert.ToInt32(match.Groups["Y"].Value),
                     Convert.ToInt32(match.Groups["Z"].Value),
@@ -182,12 +182,12 @@ namespace nmssavetool
 
         public string ToPortalCoordinateString()
         {
-            return string.Format("?{0:X3}{1:X2}{2:X3}{3:X3}", SolarSystemIndex, (Y & 0xFF), (Z & 0xFFF), (X & 0xFFF));
+            return string.Format("0{0:X3}{1:X2}{2:X3}{3:X3}", SolarSystemIndex, (Y & 0xFF), (Z & 0xFFF), (X & 0xFFF));
         }
 
-        public static NmsVoxelCoordinates FromPortalCoordinateString(string portalCoordinateStr)
+        public static VoxelCoordinates FromPortalCoordinateString(string portalCoordinateStr)
         {
-            NmsVoxelCoordinates coordinates = new NmsVoxelCoordinates();
+            VoxelCoordinates coordinates = new VoxelCoordinates();
 
             var match = Regex.Match(portalCoordinateStr, @"[A-Za-z0-9]{12}");
             if (!match.Success)

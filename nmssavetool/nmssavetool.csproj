@@ -52,6 +52,10 @@
       <HintPath>..\packages\CommandLineParser.2.1.1-beta\lib\net45\CommandLine.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="CsvHelper, Version=2.0.0.0, Culture=neutral, PublicKeyToken=8c4959082be5c823, processorArchitecture=MSIL">
+      <HintPath>..\packages\CsvHelper.2.16.3.0\lib\net45\CsvHelper.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Mnemosyne, Version=1.0.0.1, Culture=neutral, PublicKeyToken=317149717b49a330, processorArchitecture=MSIL">
       <HintPath>..\packages\Mnemosyne.1.0.0.1\lib\Mnemosyne.dll</HintPath>
       <Private>True</Private>
@@ -75,15 +79,23 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="GameSaveDir.cs" />
-    <Compile Include="NmsVoxelCoordinates.cs" />
+    <Compile Include="GameSave.cs" />
+    <Compile Include="GameSaveManager.cs" />
+    <Compile Include="Inventory.cs" />
+    <Compile Include="InventoryItemTypes.cs" />
+    <Compile Include="Options.cs" />
+    <Compile Include="VoxelCoordinates.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Storage.cs" />
     <Compile Include="XXTEA.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\README.md">
+      <Link>README.md</Link>
+    </None>
     <None Include="App.config" />
+    <None Include="InventoryItemTypes.csv" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
@@ -103,7 +115,8 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy $(SolutionDir)..\README.md $(TargetDir)
+    <PostBuildEvent>copy $(SolutionDir)README.md $(TargetDir)
+copy $(ProjectDir)InventoryItemTypes.csv $(TargetDir)
 del $(TargetDir)FSharp.*</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
