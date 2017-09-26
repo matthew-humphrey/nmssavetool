@@ -27,6 +27,10 @@ namespace nmssavetool
     /// </summary>
     public class GameSaveManager
     {
+        #region Public Constants
+        const uint MaxGameSlots = 5;
+        #endregion
+
         #region Private Member Variables
         private string _savePath;
         private ulong? _profileKey;
@@ -124,18 +128,17 @@ namespace nmssavetool
         /// Read the latest game save for the specified game mode, and return a 
         /// GameSave object that can be used to manipulate various attributes of that save.
         /// </summary>
-        /// <param name="gameMode">The NMS game mode whose save will be read.</param>
+        /// <param name="gameSlot">The NMS game slot (1 - 5) whose latest save will be read.</param>
         /// <returns></returns>
-        public GameSave ReadLatestSaveFile(GameModes gameMode)
+        public GameSave ReadSaveFile(uint gameSlot)
         {
             string metadataPath;
             string storagePath;
             uint archiveNumber;
-            ulong? profileKey;
 
-            FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
+            GameSavePathsForRead(gameSlot, out metadataPath, out storagePath, out archiveNumber);
 
-            string jsonStr = Storage.Read(metadataPath, storagePath, archiveNumber, profileKey);
+            string jsonStr = Storage.Read(metadataPath, storagePath, archiveNumber, _profileKey);
 
             return new GameSave(jsonStr, _inventoryItemTypes);
         }
@@ -156,22 +159,23 @@ namespace nmssavetool
         /// Serialize the provided GameSave object and encrypt and write it to the latest game save slot for the specified game mode.
         /// </summary>
         /// <param name="gameSave">The Game Save wrapper object, as returned by ReadLatestSaveFile.</param>
-        /// <param name="gameMode">The game mode for which the save will be written.</param>
+        /// <param name="gameSlot">The game slot (1-5) for which the save will be written.</param>
         /// <param name="useOldFormat">true to use the NMS 1.0 game save format, false otherwise.</param>
-        public void WriteLatestSaveFile(GameSave gameSave, GameModes gameMode, bool useOldFormat = false)
+        public void WriteSaveFile(GameSave gameSave, uint gameSlot)
         {
             string metadataPath;
             string storagePath;
             uint archiveNumber;
-            ulong? profileKey;
 
-            FindLatestGameSaveFiles(gameMode, out metadataPath, out storagePath, out archiveNumber, out profileKey);
+            ValidateGameSlot(gameSlot);
+
+            GameSavePathsForWrite(gameSlot, out metadataPath, out storagePath, out archiveNumber);
 
             string json = gameSave.ToUnformattedJsonString();
 
             using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(json)))
             {
-                Storage.Write(metadataPath, storagePath, ms, archiveNumber, profileKey, useOldFormat);
+                Storage.Write(metadataPath, storagePath, ms, archiveNumber, _profileKey, false);
                 var now = DateTime.Now;
                 File.SetLastWriteTime(metadataPath, now);
                 File.SetLastWriteTime(storagePath, now);
@@ -191,17 +195,16 @@ namespace nmssavetool
         /// Decrypt and save a copy of the latest NMS game save for the specified game mode. 
         /// The file is written as unencrypted, formatted JSON.
         /// </summary>
-        /// <param name="gameMode">The game mode for which the latest save will be backed up.</param>
+        /// <param name="gameSlot">The game slot (1-5) for which the latest save will be backed up.</param>
         /// <param name="jsonBackupPath">The path to which the JSON file will be written.</param>
-        public void BackupLatestJsonTo(GameModes gameMode, string jsonBackupPath)
+        public void BackupLatestJsonTo(uint gameSlot, string jsonBackupPath)
         {
-            var gameSave = ReadLatestSaveFile(gameMode);
+            var gameSave = ReadSaveFile(gameSlot);
             File.WriteAllText(jsonBackupPath, gameSave.ToFormattedJsonString());
         }
 
         public DateTime FindMostRecentSaveDateTime()
         {
-            // TODO: Do we need GameModes here?
             var saveFiles = Directory.EnumerateFiles(_savePath, "*.hg");
             return (from saveFile in saveFiles select File.GetLastWriteTime(saveFile)).Max();
         }
@@ -299,32 +302,26 @@ namespace nmssavetool
             }
         }
 
-        private void FindLatestGameSaveFiles(GameModes gameMode, out string metadataPath, out string storagePath, out uint archiveNumber, out ulong? profileKey)
+        private void GameSavePathsForWrite(uint gameSlot, out string metadataPath, out string storagePath, out uint archiveNumber)
+        {
+            ValidateGameSlot(gameSlot);
+
+            archiveNumber = 2 * (gameSlot - 1);
+            metadataPath = Path.Combine(_savePath, ArchiveNumberToMetadataFileName(archiveNumber));
+            storagePath = Path.Combine(_savePath, ArchiveNumberToStorageFileName(archiveNumber));
+        }
+
+        private void GameSavePathsForRead(uint gameSlot, out string metadataPath, out string storagePath, out uint archiveNumber)
         {
             metadataPath = null;
             storagePath = null;
             archiveNumber = 0;
-            profileKey = this._profileKey;
 
             uint[] archiveNumbers;
 
-            switch (gameMode)
-            {
-                case GameModes.normal:
-                    archiveNumbers = new uint[] { 0, 1, 2 };
-                    break;
-                case GameModes.survival:
-                    archiveNumbers = new uint[] { 3, 4, 5 };
-                    break;
-                case GameModes.creative:
-                    archiveNumbers = new uint[] { 6, 7, 8 };
-                    break;
-                case GameModes.permadeath:
-                    archiveNumbers = new uint[] { 9, 10, 11 };
-                    break;
-                default:
-                    throw new InvalidOperationException();
-            }
+            ValidateGameSlot(gameSlot);
+
+            archiveNumbers = new uint[] { 2 * (gameSlot - 1), 2 * (gameSlot - 1) + 1 };
 
             // Find the newest metadata file.
             DateTime newestMdWriteTime = DateTime.MinValue;
@@ -344,7 +341,15 @@ namespace nmssavetool
 
             if (null == metadataPath)
             {
-                throw new FileNotFoundException(string.Format("No save games found for game mode {0}", gameMode)); 
+                throw new FileNotFoundException(string.Format("No save games found for game slot {0}", gameSlot));
+            }
+        }
+
+        private static void ValidateGameSlot(uint gameSlot)
+        {
+            if (gameSlot < 1 || gameSlot > MaxGameSlots)
+            {
+                throw new ArgumentException(string.Format("Invalid game slot: {0}", gameSlot));
             }
         }
         #endregion

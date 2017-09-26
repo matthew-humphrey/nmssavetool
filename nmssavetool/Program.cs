@@ -13,7 +13,7 @@ namespace nmssavetool
         private Random _random;
         private GameSave _gs;
         private GameSaveManager _gsm;
-        private GameModes _gameMode;
+        private uint _gameSlot;
 
         static void Main(string[] args)
         {
@@ -99,7 +99,7 @@ namespace nmssavetool
             LogVerbose("CLR version: {0}", Environment.Version);
             LogVerbose("APPDATA folder: {0}", Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
 
-            _gameMode = opt.GameMode;
+            _gameSlot= opt.GameSlot;
 
             _gsm = new GameSaveManager(opt.SaveDir);
         }
@@ -111,7 +111,7 @@ namespace nmssavetool
             GameSave gs;
             try
             {
-                _gs = _gsm.ReadLatestSaveFile(_gameMode);
+                _gs = _gsm.ReadSaveFile(_gameSlot);
             }
             catch (Exception x)
             {
@@ -134,9 +134,9 @@ namespace nmssavetool
 
             try
             {
-                _gsm.WriteLatestSaveFile(_gs, opt.GameMode);
+                _gsm.WriteSaveFile(_gs, opt.GameSlot);
 
-                Log("Wrote latest game save for game mode \"{0}\"", opt.GameMode);
+                Log("Wrote latest game save for game slot \"{0}\"", opt.GameSlot);
             }
             catch (Exception x)
             {
@@ -150,7 +150,7 @@ namespace nmssavetool
 
             try
             {
-                _gs = _gsm.ReadLatestSaveFile(opt.GameMode);
+                _gs = _gsm.ReadSaveFile(opt.GameSlot);
             }
             catch (Exception x)
             {
@@ -558,7 +558,7 @@ namespace nmssavetool
         {
             if (!opt.NoBasic)
             {
-                Log("Save file for game mode: {0}", opt.GameMode);
+                Log("Save file for game slot: {0}", opt.GameSlot);
                 Log("  Save file version: {0}", _gs.Version);
                 Log("  Platform: {0}", _gs.Platform);
                 Log("  Health: {0}", _gs.PlayerHealth);
@@ -698,14 +698,14 @@ namespace nmssavetool
 
             try
             {
-                _gsm.WriteLatestSaveFile(_gs, _gameMode);
+                _gsm.WriteSaveFile(_gs, _gameSlot);
             }
             catch (Exception x)
             {
                 throw new Exception(string.Format("Error storing save file: {0}", x.Message));
             }
 
-            Log("Encrypted game save file \"{0}\" and wrote to latest game save for game mode {1}", opt.InputPath, _gameMode);
+            Log("Encrypted game save file \"{0}\" and wrote to latest game save for game slot {1}", opt.InputPath, _gameSlot);
         }
 
         private void RunRestore(RestoreOptions opt)
@@ -725,14 +725,14 @@ namespace nmssavetool
 
             try
             {
-                _gsm.WriteLatestSaveFile(_gs, _gameMode);
+                _gsm.WriteSaveFile(_gs, _gameSlot);
             }
             catch (Exception x)
             {
                 throw new Exception(string.Format("Error restoring save file: {0}", x.Message));
             }
 
-            Log("Restored file \"{0}\" to latest game save for game mode \"{1}\"", opt.RestorePath, _gameMode);
+            Log("Restored file \"{0}\" to latest game save for game mode \"{1}\"", opt.RestorePath, _gameSlot);
         }
 
         #endregion
@@ -843,7 +843,7 @@ namespace nmssavetool
         {
             try
             {
-                var baseName = string.Format("nmssavetool-backup-{0}-{1}", _gameMode, _gsm.FindMostRecentSaveDateTime().ToString("yyyyMMdd-HHmmss"));
+                var baseName = string.Format("nmssavetool-backup-{0}-{1}", _gameSlot, _gsm.FindMostRecentSaveDateTime().ToString("yyyyMMdd-HHmmss"));
                 var basePath = Path.Combine(backupDir, baseName);
 
                 if (fullBackup)
@@ -854,7 +854,7 @@ namespace nmssavetool
                 }
 
                 var jsonPath = basePath + ".json";
-                _gsm.BackupLatestJsonTo(_gameMode, jsonPath);
+                _gsm.BackupLatestJsonTo(_gameSlot, jsonPath);
                 Log("Backed up decrypted JSON to: {0}", jsonPath);
             }
             catch (Exception x)

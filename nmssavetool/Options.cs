@@ -156,8 +156,8 @@ namespace nmssavetool
 
     public class CommonOptions
     {
-        [Option('g', "game-mode", Required = true, HelpText = "Use saves for which game mode (normal|survival|creative|permadeath)")]
-        public GameModes GameMode { get; set; }
+        [Option('g', "game-slot", Required = true, HelpText = "Use saves for which game slot (1-5)")]
+        public uint GameSlot { get; set; }
 
         [Option("save-dir", Required = false, HelpText = "Path to game save folder (optional - determined automatically if not provided)")]
         public string SaveDir { get; set; }
