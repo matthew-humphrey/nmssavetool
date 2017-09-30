@@ -207,7 +207,50 @@ namespace nmssavetool
 
         private void RunSeed(SeedOptions opt)
         {
-            throw new NotImplementedException();
+            ulong seed = 0;
+
+            if (opt.RandomSeed)
+            {
+                if (opt.Target == SeedTargets.freighter)
+                {
+                    seed = _gs.RandomizeFreighterSeed();                    
+                }
+                else if (opt.Target == SeedTargets.multitool)
+                {
+                    seed = _gs.RandomizeMultitoolSeed();
+                }
+                else if (opt.Target == SeedTargets.ship)
+                {
+                    seed = _gs.RandomizeMultitoolSeed(); ;
+                }
+
+            }
+            else if (opt.SetSeed != null)
+            {
+                try
+                {
+                    seed = ParseUlongOption(opt.SetSeed);
+                }
+                catch (Exception)
+                {
+                    throw new ArgumentException(string.Format("Invalid seed value: {0}", opt.SetSeed));
+                }
+
+                if (opt.Target == SeedTargets.freighter)
+                {
+                    _gs.FreighterSeed = seed;
+                }
+                else if (opt.Target == SeedTargets.multitool)
+                {
+                    _gs.MultitoolSeed = seed;
+                }
+                else if (opt.Target == SeedTargets.ship)
+                {
+                    _gs.ShipSeed = seed;
+                }
+            }
+
+            Log("{0} seed set to: 0x{1:X16}", opt.Target, seed);
         }
 
 
