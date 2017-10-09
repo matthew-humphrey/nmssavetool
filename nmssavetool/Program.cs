@@ -14,6 +14,8 @@ namespace nmssavetool
         private GameSave _gs;
         private GameSaveManager _gsm;
         private uint _gameSlot;
+        private TextWriter _log;
+        private TextWriter _logVerbose;
 
         static void Main(string[] args)
         {
@@ -26,7 +28,8 @@ namespace nmssavetool
         Program()
         {
             _random = new Random();
-            LogWriter = Console.Out;
+            _log = Console.Out;
+            _logVerbose = Console.Out;
         }
 
         public TextWriter LogWriter { get; set; }
@@ -42,6 +45,7 @@ namespace nmssavetool
                 var result = CommandLine.Parser.Default.ParseArguments(args, 
                     typeof(AddInventoryOptions),
                     typeof(BackupOptions),
+                    typeof(BackupAllOptions),
                     typeof(DecryptOptions),
                     typeof(DelInventoryOptions),
                     typeof(EncryptOptions),
@@ -62,6 +66,7 @@ namespace nmssavetool
                 result
                     .WithParsed<AddInventoryOptions>(opt => LoadRunSave(opt, o => RunAddInventory(o)))
                     .WithParsed<BackupOptions>(opt => LoadRun(opt, o => RunBackup(o)))
+                    .WithParsed<BackupAllOptions>(opt => RunBackupAll(opt))
                     .WithParsed<DecryptOptions>(opt => LoadRun(opt, o => RunDecrypt(o)))
                     .WithParsed<DelInventoryOptions>(opt => LoadRunSave(opt, o => RunDelInventory(o)))
                     .WithParsed<EncryptOptions>(opt => RunEncrypt(opt))
@@ -91,22 +96,28 @@ namespace nmssavetool
 
         private void DoCommon(CommonOptions opt)
         {
+            Verbose = opt.Verbose;
+
             if (!Verbose)
             {
-                Verbose = opt.Verbose;
+                _logVerbose = TextWriter.Null;
             }
 
             LogVerbose("CLR version: {0}", Environment.Version);
             LogVerbose("APPDATA folder: {0}", Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
 
-            _gameSlot= opt.GameSlot;
+            _gsm = new GameSaveManager(opt.SaveDir, _log, _logVerbose);
+        }
 
-            _gsm = new GameSaveManager(opt.SaveDir);
+        private void DoGameSlotCommon(GameSlotOptions opt)
+        {
+            DoCommon(opt);
+            _gameSlot= opt.GameSlot;
         }
 
         private void LoadRunSave<T>(T opt, Action<T> action) where T : UpdateOptions
         {
-            DoCommon(opt);
+            DoGameSlotCommon(opt);
 
             GameSave gs;
             try
@@ -144,9 +155,9 @@ namespace nmssavetool
             }
         }
 
-        private void LoadRun<T>(T opt, Action<T> action) where T : CommonOptions
+        private void LoadRun<T>(T opt, Action<T> action) where T : GameSlotOptions
         {
-            DoCommon(opt);
+            DoGameSlotCommon(opt);
 
             try
             {
@@ -682,6 +693,30 @@ namespace nmssavetool
             }
         }
 
+        private void RunBackupAll(BackupAllOptions opt)
+        {
+            DoCommon(opt);
+
+            try
+            {
+                string archivePath = opt.BackupPath;
+
+                if (Directory.Exists(opt.BackupPath))
+                {
+                    var baseName = string.Format("nmssavetool-backupall-{0}", _gsm.FindMostRecentSaveDateTime().ToString("yyyyMMdd-HHmmss"));
+                    var basePath = Path.Combine(opt.BackupPath, baseName);
+                    archivePath = basePath + ".zip";
+                }
+
+                _gsm.ArchiveSaveDirTo(archivePath);
+                Log("Backed up save game files to: {0}", archivePath);
+            }
+            catch (Exception x)
+            {
+                throw new Exception(string.Format("Error backing up all save games: {0}", x.Message));
+            }
+        }
+
         private void RunDecrypt(DecryptOptions opt)
         {
             LogVerbose("Parsing and formatting save game JSON");
@@ -714,7 +749,7 @@ namespace nmssavetool
 
         private void RunEncrypt(EncryptOptions opt)
         {
-            DoCommon(opt);
+            DoGameSlotCommon(opt);
 
             LogVerbose("Loading JSON save game data from: {0}", opt.InputPath);
 
@@ -753,7 +788,7 @@ namespace nmssavetool
 
         private void RunRestore(RestoreOptions opt)
         {
-            DoCommon(opt);
+            DoGameSlotCommon(opt);
 
             LogVerbose("Loading JSON save game data from: {0}", opt.RestorePath);
 
@@ -866,15 +901,12 @@ namespace nmssavetool
 
         private void Log(string format, params object[] arg)
         {
-            LogWriter.WriteLine(format, arg);
+            _log.WriteLine(format, arg);
         }
 
         private void LogVerbose(string format, params object[] arg)
         {
-            if (Verbose)
-            {
-                LogWriter.WriteLine(format, arg);
-            }
+            _logVerbose.WriteLine(format, arg);
         }
 
         private void LogError(string format, params object[] arg)
@@ -888,21 +920,13 @@ namespace nmssavetool
             {
                 var baseName = string.Format("nmssavetool-backup-{0}-{1}", _gameSlot, _gsm.FindMostRecentSaveDateTime().ToString("yyyyMMdd-HHmmss"));
                 var basePath = Path.Combine(backupDir, baseName);
-
-                if (fullBackup)
-                {
-                    var zipPath = basePath + ".zip";
-                    _gsm.ArchiveSaveDirTo(zipPath);
-                    Log("Backed up save game files to: {0}", zipPath);
-                }
-
                 var jsonPath = basePath + ".json";
                 _gsm.BackupLatestJsonTo(_gameSlot, jsonPath);
                 Log("Backed up decrypted JSON to: {0}", jsonPath);
             }
             catch (Exception x)
             {
-                throw new Exception(string.Format("Error backing up save game files: {0}", x.Message), x);
+                throw new Exception(string.Format("Error backing up save game file: {0}", x.Message), x);
             }
         }
 

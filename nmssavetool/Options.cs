@@ -156,9 +156,6 @@ namespace nmssavetool
 
     public class CommonOptions
     {
-        [Option('g', "game-slot", Required = true, HelpText = "Use saves for which game slot (1-5)")]
-        public uint GameSlot { get; set; }
-
         [Option("save-dir", Required = false, HelpText = "Path to game save folder (optional - determined automatically if not provided)")]
         public string SaveDir { get; set; }
 
@@ -166,10 +163,23 @@ namespace nmssavetool
         public bool Verbose { get; set; }
     }
 
-    [Verb("backup", HelpText = "Back up the latest game save.")]
-    public class BackupOptions : CommonOptions
+    public class GameSlotOptions : CommonOptions
     {
-        [Option('b', "backup-dir", Required = true, HelpText = "If provided, will write the selected game-save to a decrypted JSON file in the specified directory.")]
+        [Option('g', "game-slot", Required = true, HelpText = "Use saves for which game slot (1-5)")]
+        public uint GameSlot { get; set; }
+    }
+
+    [Verb("backupall", HelpText = "Backup all game saves")]
+    public class BackupAllOptions : CommonOptions
+    {
+        [Option('b', "backup-to", Required = true, HelpText = "Specifies the directory or file to which the backup will be written. The backup will be saved as a zip archive.")]
+        public string BackupPath { get; set; }
+    }
+
+    [Verb("backup", HelpText = "Back up the latest game save.")]
+    public class BackupOptions : GameSlotOptions
+    {
+        [Option('b', "backup-dir", Required = true, HelpText = "Specifies the directory to backup the specified game slot. The backup will be created as a decrypted JSON file in the specified directory.")]
         public string BackupDir { get; set; }
 
         [Option("full-backup", HelpText = "If provided (along with -b/--backup-dir), will archive the full game-save directory in addition to the decrypted JSON game-save file.")]
@@ -177,13 +187,13 @@ namespace nmssavetool
     }
 
     [Verb("restore", HelpText = "Restore the latest game save from the specified back-up file.")]
-    public class RestoreOptions : CommonOptions
+    public class RestoreOptions : GameSlotOptions
     {
         [Option('f', "restore-from", HelpText = "Specifies the full path to a back-up file to restore from. The back-up file should be a decrypted JSON file created by this program.", Required = true)]
         public string RestorePath { get; set; }
     }
 
-    public class UpdateOptions : CommonOptions
+    public class UpdateOptions : GameSlotOptions
     {
         [Option('b', "backup-dir", HelpText = "If provided, will write the selected game-save to a decrypted JSON file in the specified directory.")]
         public string BackupDir { get; set; }
@@ -193,7 +203,7 @@ namespace nmssavetool
     }
 
     [Verb("decrypt", HelpText = "Decrypt the latest game save slot and write it to a formatted JSON file.")]
-    public class DecryptOptions : CommonOptions
+    public class DecryptOptions : GameSlotOptions
     {
         [Option('f', "output-file", HelpText = "Specifies the file to which the decrypted, formatted game save will be written.", Required = true)]
         public string OutputPath { get; set; }
@@ -347,7 +357,7 @@ namespace nmssavetool
     }
 
     [Verb("info", HelpText = "Display information about a game save including player stats and inventory contents.")]
-    public class InfoOptions : CommonOptions
+    public class InfoOptions : GameSlotOptions
     {
         [Option("no-basic", Default = false, HelpText = "Omits display of basic game-save information such as player stats and position.")]
         public bool NoBasic { get; set; }

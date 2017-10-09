@@ -35,23 +35,20 @@ namespace nmssavetool
         private string _savePath;
         private ulong? _profileKey;
         private InventoryItemTypes _inventoryItemTypes;
+        private TextWriter _log;
+        private TextWriter _logVerbose;
         #endregion
 
         #region Public Constructors
 
         /// <summary>
-        /// Creates a GameSaveManager attached to the default NMS game save directory.
-        /// </summary>
-        public GameSaveManager() : this(null)
-        {
-
-        }
-
-        /// <summary>
         /// Creates a GameSaveManager attached to the specified NMS game save directory.
         /// </summary>
-        public GameSaveManager(string saveDir)
+        public GameSaveManager(string saveDir, TextWriter log, TextWriter logVerbose)
         {
+            _log = log;
+            _logVerbose = logVerbose;
+
             if (saveDir != null)
             {
                 if (Directory.EnumerateFiles(saveDir, "storage*.hg").Count() > 0)
@@ -70,6 +67,8 @@ namespace nmssavetool
                 {
                     throw new FileNotFoundException(string.Format("No Man's Sky save game folder not found at expected location: {0}", nmsPath));
                 }
+
+                LogVerbose("Using NMS AppData folder: {0}", nmsPath);
 
                 // Check for GoG version of the game (hat tip to Reddit user, Yarmoshuk)
                 var gogDir = Path.Combine(nmsPath, "DefaultUser");
@@ -108,6 +107,8 @@ namespace nmssavetool
                 }
             }
 
+            LogVerbose("Using save path: {0}", _savePath);
+
             // Attempt to load list of valid item types
             _inventoryItemTypes = new InventoryItemTypes(LoadInventoryItemTypesFromDefaultCsvFile());
         }
@@ -136,7 +137,11 @@ namespace nmssavetool
             string storagePath;
             uint archiveNumber;
 
+            LogVerbose("Checking for save games for slot {0}", gameSlot);
+
             GameSavePathsForRead(gameSlot, out metadataPath, out storagePath, out archiveNumber);
+
+            LogVerbose("Reading game save for slot {0} at metadata path = '{1}', storage path = {2}, and archive number = {3}", gameSlot, metadataPath, storagePath, archiveNumber);
 
             string jsonStr = Storage.Read(metadataPath, storagePath, archiveNumber, _profileKey);
 
@@ -169,7 +174,11 @@ namespace nmssavetool
 
             ValidateGameSlot(gameSlot);
 
+            LogVerbose("Determining save games file locations for slot {0}", gameSlot);
+
             GameSavePathsForWrite(gameSlot, out metadataPath, out storagePath, out archiveNumber);
+
+            LogVerbose("Writing game save for slot {0} to metadata path = '{1}', storage path = {2}, and archive number = {3}", gameSlot, metadataPath, storagePath, archiveNumber);
 
             string json = gameSave.ToUnformattedJsonString();
 
@@ -188,7 +197,19 @@ namespace nmssavetool
         /// <param name="archivePath">The path to which the archive will be written.</param>
         public void ArchiveSaveDirTo(string archivePath)
         {
-            ZipFile.CreateFromDirectory(_savePath, archivePath);
+            LogVerbose("Attempting to create a save game archive at path: ", archivePath);
+
+            using (var zipArchive = ZipFile.Open(archivePath, ZipArchiveMode.Update))
+            {
+                var di = new DirectoryInfo(_savePath);
+                LogVerbose("Archive save game files from: {0}", _savePath);
+                var filesToArchive = di.GetFiles("*.hg");
+                foreach(var fileToArchive in filesToArchive)
+                {
+                    LogVerbose("Archiving: {0}", fileToArchive.Name);
+                    zipArchive.CreateEntryFromFile(fileToArchive.FullName, fileToArchive.Name);
+                }
+            }
         }
 
         /// <summary>
@@ -200,6 +221,7 @@ namespace nmssavetool
         public void BackupLatestJsonTo(uint gameSlot, string jsonBackupPath)
         {
             var gameSave = ReadSaveFile(gameSlot);
+            LogVerbose("Backing up decrypted save game file to: {0}", jsonBackupPath);
             File.WriteAllText(jsonBackupPath, gameSave.ToFormattedJsonString());
         }
 
@@ -227,6 +249,8 @@ namespace nmssavetool
 
         private IList<InventoryItemType> LoadInventoryItemTypesFromCsvFile(string filePath)
         {
+            LogVerbose("Reading inventory item list from: {0}", filePath);
+
             var sr = new StreamReader(filePath);
             var csv = new CsvReader(sr);
             csv.Configuration.AllowComments = true;
@@ -277,6 +301,17 @@ namespace nmssavetool
 
             return null;
         }
+
+        private void Log(string format, params object[] arg)
+        {
+            _log.WriteLine(format, arg);
+        }
+
+        private void LogVerbose(string format, params object[] arg)
+        {
+            _logVerbose.WriteLine(format, arg);
+        }
+
 
         private string ArchiveNumberToMetadataFileName(uint archiveNumber)
         {
