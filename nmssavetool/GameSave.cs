@@ -18,6 +18,15 @@ namespace nmssavetool
                 // TODO: What are the other states?
         }
 
+        public enum GameModes
+        {
+            Unknown,
+            Normal,
+            Creative,
+            Survival,
+            Permadeath
+        }
+
         #region Public Constants
         public const int NumContainers = 10;
         public const int MaxHealth = 8;
@@ -56,11 +65,19 @@ namespace nmssavetool
 
         #region Public Properties
 
-        public string Version
+        public int Version
         {
             get
             {
-                return _json.Version;
+                return (int)_json.Version;
+            }
+        }
+
+        public GameModes GameMode
+        {
+            get
+            {
+                return VersionToGameMode(Version);
             }
         }
 
@@ -624,6 +641,30 @@ namespace nmssavetool
             {
                 int primaryVehicleIndex = _json.PlayerStateData.PrimaryVehicle;
                 return _json.PlayerStateData.VehicleOwnership[primaryVehicleIndex];
+            }
+        }
+
+        private static GameModes VersionToGameMode(int version)
+        {
+            switch (version)
+            {
+                case 4616: return GameModes.Normal;
+                case 5128: return GameModes.Creative;
+                case 5640: return GameModes.Survival;
+                case 6664: return GameModes.Permadeath;
+                default: return GameModes.Unknown;
+            }
+        }
+
+        private static int GameModeToVersion(GameModes gameMode)
+        {
+            switch(gameMode)
+            {
+                case GameModes.Normal: return 4616;
+                case GameModes.Creative: return 5128;
+                case GameModes.Survival: return 5640;
+                case GameModes.Permadeath: return 6664;
+                default: throw new ArgumentException("Unknown game mode");
             }
         }
 

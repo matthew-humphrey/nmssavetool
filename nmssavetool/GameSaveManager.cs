@@ -317,11 +317,11 @@ namespace nmssavetool
         {
             if (archiveNumber == 0)
             {
-                return "mf_storage.hg";
+                return "mf_save.hg";
             }
             else
             {
-                return string.Format("mf_storage{0}.hg", archiveNumber + 1);
+                return string.Format("mf_save{0}.hg", archiveNumber + 1);
             }
         }
 
@@ -329,11 +329,11 @@ namespace nmssavetool
         {
             if (archiveNumber == 0)
             {
-                return "storage.hg";
+                return "save.hg";
             }
             else
             {
-                return string.Format("storage{0}.hg", archiveNumber + 1);
+                return string.Format("save{0}.hg", archiveNumber + 1);
             }
         }
 
@@ -341,9 +341,41 @@ namespace nmssavetool
         {
             ValidateGameSlot(gameSlot);
 
-            archiveNumber = 2 * (gameSlot - 1);
-            metadataPath = Path.Combine(_savePath, ArchiveNumberToMetadataFileName(archiveNumber));
-            storagePath = Path.Combine(_savePath, ArchiveNumberToStorageFileName(archiveNumber));
+            var archiveNumbers = new uint[] { 2 * (gameSlot - 1), 2 * (gameSlot - 1) + 1 };
+
+            var archives = new List<Tuple<string,string,uint,DateTime>>(2);
+
+            bool addedOne = false;
+
+            // Find the newest metadata file.
+            foreach (var i in archiveNumbers)
+            {
+                var mdp = Path.Combine(_savePath, ArchiveNumberToMetadataFileName(i));
+                var stp = Path.Combine(_savePath, ArchiveNumberToStorageFileName(i));
+
+                if (File.Exists(mdp) && File.Exists(stp))
+                {
+                    archives.Add(new Tuple<string, string, uint, DateTime>(mdp, stp, i, File.GetLastWriteTime(mdp)));
+                }
+                else if (!addedOne)
+                {
+                    archives.Add(new Tuple<string, string, uint, DateTime>(mdp, stp, i, DateTime.Now));
+                }
+            }
+
+            if (archives.Count != 0)
+            {
+                var archive = archives.OrderByDescending(a => a.Item4).First();
+                metadataPath = archive.Item1;
+                storagePath = archive.Item2;
+                archiveNumber = archive.Item3;
+            }
+            else
+            {
+                metadataPath = Path.Combine(_savePath, ArchiveNumberToMetadataFileName(archiveNumbers[0]));
+                storagePath = Path.Combine(_savePath, ArchiveNumberToStorageFileName(archiveNumbers[0]));
+                archiveNumber = archiveNumbers[0];
+            }
         }
 
         private void GameSavePathsForRead(uint gameSlot, out string metadataPath, out string storagePath, out uint archiveNumber)
@@ -352,29 +384,33 @@ namespace nmssavetool
             storagePath = null;
             archiveNumber = 0;
 
-            uint[] archiveNumbers;
 
             ValidateGameSlot(gameSlot);
 
-            archiveNumbers = new uint[] { 2 * (gameSlot - 1), 2 * (gameSlot - 1) + 1 };
+            var archiveNumbers = new uint[] { 2 * (gameSlot - 1), 2 * (gameSlot - 1) + 1 };
+
+            var archives = new List<Tuple<string, string, uint, DateTime>>(2);
 
             // Find the newest metadata file.
-            DateTime newestMdWriteTime = DateTime.MinValue;
             foreach (var i in archiveNumbers)
             {
                 var mdp = Path.Combine(_savePath, ArchiveNumberToMetadataFileName(i));
                 var stp = Path.Combine(_savePath, ArchiveNumberToStorageFileName(i));
 
-                if (File.Exists(mdp) && File.Exists(stp) && File.GetLastWriteTime(mdp) > newestMdWriteTime)
+                if (File.Exists(mdp) && File.Exists(stp))
                 {
-                    metadataPath = mdp;
-                    storagePath = stp;
-                    archiveNumber = i;
-                    newestMdWriteTime = File.GetLastWriteTime(mdp);
+                    archives.Add(new Tuple<string, string, uint, DateTime>(mdp, stp, i, File.GetLastWriteTime(mdp)));
                 }
             }
 
-            if (null == metadataPath)
+            if (archives.Count != 0)
+            {
+                var archive = archives.OrderByDescending(a => a.Item4).First();
+                metadataPath = archive.Item1;
+                storagePath = archive.Item2;
+                archiveNumber = archive.Item3;
+            }
+            else
             {
                 throw new FileNotFoundException(string.Format("No save games found for game slot {0}", gameSlot));
             }

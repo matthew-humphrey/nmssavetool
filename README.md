@@ -16,7 +16,7 @@ Run "nmssavetool help" for help.
 ```
 > nmssavetool help
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   addinv       Adds an inventory item.
 
@@ -75,7 +75,7 @@ moving left and up as necessary until an available slot is found.
 ```
 >nmssavetool.exe help addinv
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -i, --item               Required. Specifies the inventory item to add. You may specify a portion of the name
                            and the program will try and match with one of the valid items. Surround the name in
@@ -123,7 +123,7 @@ formatted JSON file, that can be edited, or provided as input to the encrypt or 
 ```
 >nmssavetool.exe help backup
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -b, --backup-dir    Required. If provided, will write the selected game-save to a decrypted JSON file in the
                       specified directory.
@@ -163,7 +163,7 @@ is assumed to be the filename for the created archive.
 ```
   > nmssavetool.exe help backupall
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -b, --backup-to    Required. Specifies the directory or file to which the backup will be written. The backup 
                      will be saved as a zip archive.
@@ -192,7 +192,7 @@ by this program, and then provided as input to the encrypt command.
 ```
 >nmssavetool.exe help decrypt
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -f, --output-file    Required. Specifies the file to which the decrypted, formatted game save will be
                        written.
@@ -220,7 +220,7 @@ Deletes an item (product, substance, or technology) from an inventory.
 ```
 >nmssavetool.exe help delinv
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -s, --position           Required. Specifies the position, as row,col, of the inventory item which will be
                            deleted. Valid row and column value start at 1.
@@ -262,7 +262,7 @@ specified game mode.
 ```
 >nmssavetool help encrypt
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -f, --input-file    Required. Specifies the JSON input file which will be encrypted and written to the latest
                       game save slot.
@@ -306,7 +306,7 @@ further restrict what inventory types are displayed, use the -t/--types option.
 ```
 >nmssavetool help info
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   --no-basic                (Default: false) Omits display of basic game-save information such as player stats
                             and position.
@@ -362,7 +362,7 @@ but it is possible that Hello Games may change this in the future.
 ```
 >nmssavetool help maxslots
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -c, --inventory-groups    (Default: all) The inventory groups whose slots will be maximized
 
@@ -398,7 +398,7 @@ source slot will be left valid, but empty. To swap the contents of inventory slo
 ```
 >nmssavetool help moveinv
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -p, --position           Required. Specifies the from- and to-position as, "from_row,from_col:to_row,to_col",
                            of the item which will be moved. Valid row and column values start at '1'
@@ -445,7 +445,7 @@ This command will "recharge" these items back to their full capacity.
 ```
   > nmssavetool help recharge 
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -c, --inventory-groups    (Default: exosuit ship freighter vehicle container) What inventories to recharge.
 
@@ -481,7 +481,7 @@ This command has no effect on technology items.
 ```
   > nmssavetool help refill 
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -c, --inventory-groups    (Default: exosuit ship freighter vehicle container) What inventories to refill.
 
@@ -515,7 +515,7 @@ Refurbish is equivalent to running the recharge, refill, and repair commands ind
 ```
   > nmssavetool help refurbish 
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -c, --inventory-groups    (Default: exosuit ship multitool freighter vehicle container) What inventories to
                             refurbish.
@@ -566,7 +566,7 @@ flags.
 ```
   > nmssavetool help relocate 
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -c, --galactic-coordinates    Set the player position using the galactic coordinates displayed by signal
                                 scanners.
@@ -628,7 +628,7 @@ Repairs damaged technology items.
 ```
   > nmssavetool help repair 
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -c, --inventory-groups    (Default: exosuit multitool ship) What inventories to repair.
 
@@ -669,7 +669,7 @@ Restore a previously decrypted / backed-up game save.
 ```
   > nmssavetool help restore 
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -f, --restore-from    Required. Specifies the full path to a back-up file to restore from. The back-up file
                         should be a decrypted JSON file created by this program.
@@ -701,7 +701,7 @@ You may set the seed explicitly, or have the program generate another random val
 ```
   > nmssavetool help seed 
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -c, --apply-to               Specifies which object whose RNG seed will be changed: ship, multitool, or
                                freighter
@@ -748,7 +748,7 @@ Swap the contents of two inventory slots.
 ```
   > nmssavetool help swapinv 
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -p, --position           Required. Specifies the positions as, "row1,col1:row2,col2", of the items which will
                            be swapped. Valid row and column values start at '1'
@@ -788,7 +788,7 @@ Change the player's amount of units (in-game currency).
 ```
   > nmssavetool help units 
 
-nmssavetool 2.0.1.2
+nmssavetool 2.0.1.3
 
   -s, --set-units     Set the player Units.
 
@@ -824,21 +824,27 @@ Set player units to 2 billion.
 ---
 ## Changelog
 
-### 2017-10-08 2.0.1-alpha-2
+### 2017-10-13 2.0.1.3 (beta-1)
+* Updated game save file naming to match NMS 1.38 release
+* Updated game save archive select logic to always pick the latest save file and to create
+  one on save if less than two exist.
+* Added display of game mode to Info command
+
+### 2017-10-08 2.0.1.2 (alpha-2)
 
 * Split out backup of all saves into a separate command, "backupall".
 * Full backup now only backs up the game save archive and metadata files - no cache directory.
 * Add verbose logging to GameSaveManager
 
-### 2017-09-25 2.0.1.1-alpha
+### 2017-09-25 2.0.1.1 (alpha-1)
 
 * Fix missing implementation of "seed" command.
 
-### 2017-09-25 2.0.1.0-alpha
+### 2017-09-25 2.0.1.0 (alpha)
 
 * Initial changes to support NMS 1.38 new save slot scheme.
 
-### 2017-09-17 2.0.1.2
+### 2017-09-17 2.0.0.0
 
 * Every feature anyone has ever requested, except for a GUI :)
 * Several new inventory commands giving the ability to manipulate inventory contents. 
