@@ -613,7 +613,7 @@ namespace nmssavetool
             if (!opt.NoBasic)
             {
                 Log("Save file for game slot: {0}", opt.GameSlot);
-                Log("  Save file version: {0}", _gs.Version);
+                Log("  Save file version: {0} ({1})", _gs.Version, _gs.GameMode);
                 Log("  Platform: {0}", _gs.Platform);
                 Log("  Health: {0}", _gs.PlayerHealth);
                 Log("  Player Health: {0}", _gs.PlayerHealth);
