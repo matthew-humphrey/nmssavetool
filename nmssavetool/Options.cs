@@ -286,7 +286,7 @@ namespace nmssavetool
     [Verb("seed", HelpText = "Change the RNG seed value that is used to determine the appearance of the ship, multitool, or freighter.")]
     public class SeedOptions : UpdateOptions
     {
-        [Option('c', "apply-to", HelpText = "Specifies which object whose RNG seed will be changed: ship, multitool, or freighter")]
+        [Option('c', "apply-to", Required = true, HelpText = "Specifies which object whose RNG seed will be changed: ship, multitool, or freighter")]
         public SeedTargets Target { get; set; }
 
         [Option('r', "randomize-ship-seed", SetName = "seed", HelpText = "Generate a random seed.")]
