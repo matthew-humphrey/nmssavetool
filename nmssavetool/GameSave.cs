@@ -270,7 +270,7 @@ namespace nmssavetool
         {
             get
             {
-                return Convert.ToUInt64(PrimaryShipNode.Resource.Seed[1], 16);
+                return Convert.ToUInt64((string)PrimaryShipNode.Resource.Seed[1], 16);
             }
 
             set
@@ -283,7 +283,7 @@ namespace nmssavetool
         {
             get
             {
-                return Convert.ToUInt64(_json.PlayerStateData.CurrentWeapon.GenerationSeed[1], 16);
+                return Convert.ToUInt64((string)_json.PlayerStateData.CurrentWeapon.GenerationSeed[1], 16);
             }
 
             set
@@ -296,12 +296,12 @@ namespace nmssavetool
         {
             get
             {
-                return Convert.ToUInt64(_json.PlayerStateData.CurrentFreighter.GenerationSeed[1], 16);
+                return Convert.ToUInt64((string)_json.PlayerStateData.CurrentFreighter.Seed[1], 16);
             }
 
             set
             {
-                _json.PlayerStateData.CurrentFreighter.GenerationSeed[1] = string.Format("0x{0:X16}", value);
+                _json.PlayerStateData.CurrentFreighter.Seed[1] = string.Format("0x{0:X16}", value);
             }
         }
 

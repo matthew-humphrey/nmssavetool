@@ -36,6 +36,9 @@ namespace nmssavetool
 
         public bool Verbose { get; set; }
 
+        private delegate bool UpdateCommand<T>(T opt) where T : UpdateOptions;
+        private delegate void NoUpdateCommand<T>(T opt) where T : GameSlotOptions;
+
         public int Run(IEnumerable<string> args)
         {
             bool success = true;
@@ -115,11 +118,10 @@ namespace nmssavetool
             _gameSlot= opt.GameSlot;
         }
 
-        private void LoadRunSave<T>(T opt, Action<T> action) where T : UpdateOptions
+        private void LoadRunSave<T>(T opt, UpdateCommand<T> command) where T : UpdateOptions
         {
             DoGameSlotCommon(opt);
 
-            GameSave gs;
             try
             {
                 _gs = _gsm.ReadSaveFile(_gameSlot);
@@ -129,33 +131,34 @@ namespace nmssavetool
                 throw new Exception(string.Format("Error loading or parsing save file: {0}", x.Message));
             }
 
-            action(opt);
-
-            if (opt.BackupDir != null)
+            if (command(opt))
             {
+                if (opt.BackupDir != null)
+                {
+                    try
+                    {
+                        BackupSave(opt.BackupDir, opt.FullBackup);
+                    }
+                    catch (Exception x)
+                    {
+                        throw new Exception(string.Format("Error backing up save game: {0}", x.Message));
+                    }
+                }
+
                 try
                 {
-                    BackupSave(opt.BackupDir, opt.FullBackup);
+                    _gsm.WriteSaveFile(_gs, opt.GameSlot);
+
+                    Log("Wrote latest game save for game slot \"{0}\"", opt.GameSlot);
                 }
                 catch (Exception x)
                 {
-                    throw new Exception(string.Format("Error backing up save game: {0}", x.Message));
+                    throw new Exception(string.Format("Error storing save file: {0}", x.Message));
                 }
-            }
-
-            try
-            {
-                _gsm.WriteSaveFile(_gs, opt.GameSlot);
-
-                Log("Wrote latest game save for game slot \"{0}\"", opt.GameSlot);
-            }
-            catch (Exception x)
-            {
-                throw new Exception(string.Format("Error storing save file: {0}", x.Message));
             }
         }
 
-        private void LoadRun<T>(T opt, Action<T> action) where T : GameSlotOptions
+        private void LoadRun<T>(T opt, NoUpdateCommand<T> action) where T : GameSlotOptions
         {
             DoGameSlotCommon(opt);
 
@@ -174,7 +177,7 @@ namespace nmssavetool
 
         #region Modify Verbs
 
-        private void RunMaxSlots(MaxSlotsOptions opt)
+        private bool RunMaxSlots(MaxSlotsOptions opt)
         {
             var groups = new HashSet<InvSubGrps>(opt.Group);
 
@@ -214,9 +217,11 @@ namespace nmssavetool
             {
                 _gs.InventoryMultitool.MaximizeSlots();
             }
+
+            return true;
         }
 
-        private void RunSeed(SeedOptions opt)
+        private bool RunSeed(SeedOptions opt)
         {
             ulong seed = 0;
 
@@ -235,6 +240,8 @@ namespace nmssavetool
                     seed = _gs.RandomizeMultitoolSeed(); ;
                 }
 
+                Log("{0} seed set to: 0x{1:X16}", opt.Target, seed);
+                return true;
             }
             else if (opt.SetSeed != null)
             {
@@ -259,18 +266,35 @@ namespace nmssavetool
                 {
                     _gs.ShipSeed = seed;
                 }
+                Log("{0} seed set to: 0x{1:X16}", opt.Target, seed);
+                return true;
             }
 
-            Log("{0} seed set to: 0x{1:X16}", opt.Target, seed);
+            if (opt.Target == SeedTargets.freighter)
+            {
+                seed = _gs.FreighterSeed;
+            }
+            else if (opt.Target == SeedTargets.multitool)
+            {
+                seed = _gs.MultitoolSeed;
+            }
+            else if (opt.Target == SeedTargets.ship)
+            {
+                seed = _gs.ShipSeed;
+            }
+
+            Log("{0} seed not changed. Current seed is: 0x{1:X16}", opt.Target, seed);
+            return false;
         }
 
 
-        private void RunUnits(UnitsOptions opt)
+        private bool RunUnits(UnitsOptions opt)
         {
             if (opt.AddUnits.HasValue)
             {
                 _gs.AddUnits(opt.AddUnits.Value);
                 Log("Added {0} units. New unit total: {1}", opt.AddUnits.Value, _gs.Units);
+                return true;
             }
             else if (opt.SetUnits.HasValue)
             {
@@ -280,10 +304,14 @@ namespace nmssavetool
                 }
                 _gs.Units = (int)opt.SetUnits.Value;
                 Log("Set units. New unit total: {0}", _gs.Units);
+                return true;
             }
+
+            Log("Units not changed. Current unit total: {0}", _gs.Units);
+            return false;
         }
 
-        private void RunRecharge(RechargeOptions opt)
+        private bool RunRecharge(RechargeOptions opt)
         {
             var groups = new HashSet<InvGrps>(opt.Groups);
             var processedGroups = new List<InvGrps>(groups.Count);
@@ -322,9 +350,10 @@ namespace nmssavetool
             }
 
             Log("Recharged items in the following inventory groups: {0}.", string.Join(", ", processedGroups));
+            return true;
         }
 
-        private void RunRefill(RefillOptions opt)
+        private bool RunRefill(RefillOptions opt)
         {
             var groups = new HashSet<InvGrps>(opt.Groups);
             var processedGroups = new List<InvGrps>(groups.Count);
@@ -364,9 +393,10 @@ namespace nmssavetool
             }
 
             Log("Refilled items in the following inventory groups: {0}.", string.Join(", ", processedGroups));
+            return true;
         }
 
-        private void RunRepair(RepairOptions opt)
+        private bool RunRepair(RepairOptions opt)
         {
             var groups = new HashSet<InvGrps>(opt.Groups);
             var processedGroups = new List<InvGrps>(groups.Count);
@@ -404,9 +434,10 @@ namespace nmssavetool
             }
 
             Log("Repaired items in the following inventory groups: {0}.", string.Join(", ", processedGroups));
+            return true;
         }
 
-        private void RunRefurbish(RefurbishOptions opt)
+        private bool RunRefurbish(RefurbishOptions opt)
         {
             var groups = new HashSet<InvGrps>(opt.Groups);
             var processedGroups = new List<InvGrps>(groups.Count);
@@ -472,52 +503,61 @@ namespace nmssavetool
             }
 
             Log("Refurbished items in the following inventory groups: {0}.", string.Join(", ", processedGroups));
+            return true;
         }
 
-        private void RunRelocate(RelocateOptions opt)
+        private bool RunRelocate(RelocateOptions opt)
         {
-            bool starSystemChanged = false;
+            bool positionChanged = false;
 
             if (opt.GalacticCoordinates != null)
             {
                 SetCoordinates(VoxelCoordinates.FromGalacticCoordinateString(opt.GalacticCoordinates), opt.GalacticCoordinates);
-                starSystemChanged = true;
+                positionChanged = true;
             }
             else if (opt.PortalCoordinates != null)
             {
                 SetCoordinates(VoxelCoordinates.FromPortalCoordinateString(opt.PortalCoordinates), opt.PortalCoordinates);
-                starSystemChanged = true;
+                positionChanged = true;
             }
             else if (opt.VoxelCoordinates != null)
             {
                 SetCoordinates(VoxelCoordinates.FromVoxelCoordinateString(opt.VoxelCoordinates), opt.VoxelCoordinates);
-                starSystemChanged = true;
+                positionChanged = true;
             }
 
             if (opt.Galaxy.HasValue)
             {
                 _gs.PlayerGalaxy = opt.Galaxy.Value;
-                starSystemChanged = true;
+                positionChanged = true;
             }
 
             if (opt.Planet.HasValue)
             {
                 _gs.PlayerPlanet = opt.Planet.Value;
+                positionChanged = true;
             }
-            else if (starSystemChanged  && !opt.SkipPlanetZero)
+            else if (positionChanged  && !opt.SkipPlanetZero)
             {
                 _gs.PlayerPlanet = 0;
             }
 
-            if (starSystemChanged && !opt.SkipInShip)
+            if (positionChanged && !opt.SkipInShip)
             {
                 _gs.PlayerState = GameSave.PlayerStates.InShip;
             }
 
-            Log("Player relocated. Current position: {0}. Planet Index = {1}", _gs.PlayerCoordinates, _gs.PlayerPlanet);
+            if (positionChanged)
+            {
+                Log("Player relocated. Current position: {0}. Planet Index = {1}", _gs.PlayerCoordinates, _gs.PlayerPlanet);
+                return true;
+            }
+
+            Log("Player position unchanged. Current position: {0}. Planet Index = {1}", _gs.PlayerCoordinates, _gs.PlayerPlanet);
+            return false;
         }
 
-        private void RunAddInventory(AddInventoryOptions opt)
+        private bool RunAddInventory(AddInventoryOptions opt)
         {
             Inventory inventory = MapAddItemInvGroupToInventory(opt.Group);
             IList<InventoryItemType> matchingItemTypes = inventory.FindMatchingItemTypes(opt.Item, inventory.AllowedCategories);
@@ -544,9 +584,11 @@ namespace nmssavetool
             }
 
             Log("Added to {0} inventory position {1},{2}: {3}", opt.Group, y+1, x+1, matchingItemTypes[0].Name);
+
+            return true;
         }
 
-        private void RunSetInventory(SetInventoryOptions opt)
+        private bool RunSetInventory(SetInventoryOptions opt)
         {
             Inventory inventory = MapAddItemInvGroupToInventory(opt.Group);
             IList<InventoryItemType> matchingItemTypes = inventory.FindMatchingItemTypes(opt.Item, inventory.AllowedCategories);
@@ -569,30 +611,35 @@ namespace nmssavetool
             inventory.SetSlot(matchingItemTypes[0], opt.Position.X, opt.Position.Y);
 
             Log("Populated {0} inventory position {1} with {2} '{3}'", opt.Group, opt.Position, matchingItemTypes[0].Name);
+            return true;
         }
 
-        private void RunMoveInventory(MoveInventoryOptions opt)
+        private bool RunMoveInventory(MoveInventoryOptions opt)
         {
             Inventory inventory = MapAddItemInvGroupToInventory(opt.Group);
             inventory.MoveSlot(opt.Position.X1, opt.Position.Y1, opt.Position.X2, opt.Position.Y2);
 
             Log("Moved {0} inventory item from:to => {1}", opt.Group, opt.Position);
+            return true;
         }
 
-        private void RunSwapInventory(SwapInventoryOptions opt)
+        private bool RunSwapInventory(SwapInventoryOptions opt)
         {
             Inventory inventory = MapAddItemInvGroupToInventory(opt.Group);
             inventory.SwapSlot(opt.Position.X1, opt.Position.Y1, opt.Position.X2, opt.Position.Y2);
 
             Log("Swapped {0} inventory items at positions {1}", opt.Group, opt.Position);
+            return true;
         }
 
-        private void RunDelInventory(DelInventoryOptions opt)
+        private bool RunDelInventory(DelInventoryOptions opt)
         {
             Inventory inventory = MapAddItemInvGroupToInventory(opt.Group);
             inventory.DeleteSlot(opt.Position.X, opt.Position.Y);
 
             Log("Deleted {0} inventory item at position {1}", opt.Group, opt.Position);
+
+            return true;
         }
 
         #endregion
@@ -621,6 +668,10 @@ namespace nmssavetool
                 Log("  Ship Health: {0}", _gs.ShipHealth);
                 Log("  Ship Shield: {0}", _gs.ShipShield);
                 Log("  Units: {0:N0}", _gs.Units);
+
+                Log("  Current Ship Seed: 0x{0:X8}", _gs.ShipSeed);
+                Log("  Multitool Seed: 0x{0:X8}", _gs.MultitoolSeed);
+                Log("  Freighter Seed: 0x{0:X8}", _gs.FreighterSeed);
 
                 var coordinates = _gs.PlayerCoordinates;
                 Log("  Coordinates (x,y,z,ssi): {0}", coordinates.ToVoxelCoordinateString());
