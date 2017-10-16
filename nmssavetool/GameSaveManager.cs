@@ -51,7 +51,7 @@ namespace nmssavetool
 
             if (saveDir != null)
             {
-                if (Directory.EnumerateFiles(saveDir, "storage*.hg").Count() > 0)
+                if (Directory.EnumerateFiles(saveDir, "save*.hg").Count() > 0)
                 {
                     _savePath = saveDir;
                 }
@@ -72,7 +72,7 @@ namespace nmssavetool
 
                 // Check for GoG version of the game (hat tip to Reddit user, Yarmoshuk)
                 var gogDir = Path.Combine(nmsPath, "DefaultUser");
-                if (Directory.Exists(gogDir) && Directory.EnumerateFiles(gogDir, "storage*.hg").Count() > 0)
+                if (Directory.Exists(gogDir) && Directory.EnumerateFiles(gogDir, "save*.hg").Count() > 0)
                 {
                     _savePath = gogDir;
                 }
@@ -94,7 +94,7 @@ namespace nmssavetool
                 {
                     foreach (var dir in Directory.EnumerateDirectories(nmsPath))
                     {
-                        if (Directory.EnumerateFiles(dir, "storage*.hg").Count() > 0)
+                        if (Directory.EnumerateFiles(dir, "save*.hg").Count() > 0)
                         {
                             _savePath = dir;
                         }
@@ -141,7 +141,7 @@ namespace nmssavetool
 
             GameSavePathsForRead(gameSlot, out metadataPath, out storagePath, out archiveNumber);
 
-            LogVerbose("Reading game save for slot {0} at metadata path = '{1}', storage path = {2}, and archive number = {3}", gameSlot, metadataPath, storagePath, archiveNumber);
+            LogVerbose("Reading game save for slot {0} at metadata path = '{1}', save path = {2}, and archive number = {3}", gameSlot, metadataPath, storagePath, archiveNumber);
 
             string jsonStr = Storage.Read(metadataPath, storagePath, archiveNumber, _profileKey);
 
@@ -178,7 +178,7 @@ namespace nmssavetool
 
             GameSavePathsForWrite(gameSlot, out metadataPath, out storagePath, out archiveNumber);
 
-            LogVerbose("Writing game save for slot {0} to metadata path = '{1}', storage path = {2}, and archive number = {3}", gameSlot, metadataPath, storagePath, archiveNumber);
+            LogVerbose("Writing game save for slot {0} to metadata path = '{1}', save path = {2}, and archive number = {3}", gameSlot, metadataPath, storagePath, archiveNumber);
 
             string json = gameSave.ToUnformattedJsonString();
 
