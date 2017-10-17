@@ -205,37 +205,52 @@ namespace nmssavetool
             return _allowedCategories.Contains(codeType);
         }
 
-        public void Repair()
+        public bool Repair()
         {
+            bool changedSomething = false;
+
             foreach (var slot in _json.Slots)
             {
-                if (IsSlotTechnology(slot))
+                if (IsSlotTechnology(slot) && (slot.DamageFactor != 0.0f))
                 {
                     slot.DamageFactor = 0.0f;
+                    changedSomething = true;
                 }
             }
+
+            return changedSomething;
         }
 
-        public void Recharge()
+        public bool Recharge()
         {
+            bool changedSomething = false;
+
             foreach (var slot in _json.Slots)
             {
-                if (IsSlotTechnology(slot) && _invItemTypes[(string)slot.Id].IsRechargeable)
+                if (IsSlotTechnology(slot) && _invItemTypes[(string)slot.Id].IsRechargeable && (slot.Amount != slot.MaxAmount))
                 { 
                     slot.Amount = slot.MaxAmount;
+                    changedSomething = true;
                 }
             }
+
+            return changedSomething;
         }
 
-        public void Refill()
+        public bool Refill()
         {
+            bool changedSomething = false;
+
             foreach (var slot in _json.Slots)
             {
-                if (!IsSlotTechnology(slot))
+                if (!IsSlotTechnology(slot) && (slot.Amount != slot.MaxAmount))
                 {
                     slot.Amount = slot.MaxAmount;
+                    changedSomething = true;
                 }
             }
+
+            return changedSomething;
         }
 
         public IList<InventoryItemType> FindMatchingItemTypes(string pattern, InventoryItemCategory[] categories)

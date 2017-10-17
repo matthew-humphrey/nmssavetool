@@ -244,8 +244,8 @@ namespace nmssavetool
     [Verb("repair", HelpText = "Repair damaged technology in the exosuit, multitool, ship, vehicle, or freighter inventories.")]
     public class RepairOptions : UpdateOptions
     {
-        [Option('c', "inventory-groups", Separator = '+', Max = 5, Default = new InvGrps[] { InvGrps.exosuit, InvGrps.multitool, InvGrps.ship },
-            HelpText = "What inventories to repair.")]
+        [Option('c', "inventory-groups", Separator = '+', Max = 5, Default = new InvGrps[] { InvGrps.exosuit, InvGrps.ship, InvGrps.multitool },
+            HelpText = "Which inventories to repair.")]
         public IEnumerable<InvGrps> Groups { get; set; }
     }
 
@@ -253,15 +253,15 @@ namespace nmssavetool
     public class RefillOptions : UpdateOptions
     {
         [Option('c', "inventory-groups", Separator = '+', Max = 5, Default = new InvGrps[] { InvGrps.exosuit, InvGrps.ship, InvGrps.freighter, InvGrps.vehicle, InvGrps.container },
-            HelpText = "What inventories to refill.")]
+            HelpText = "Which inventories to refill.")]
         public IEnumerable<InvGrps> Groups { get; set; }
     }
 
     [Verb("recharge", HelpText = "Recharge shield, energy and fuel levels in the exosuit, multitool, ship, freighter, or vehicle inventories.")]
     public class RechargeOptions : UpdateOptions
     {
-        [Option('c', "inventory-groups", Separator = '+', Max = 5, Default = new InvGrps[] { InvGrps.exosuit, InvGrps.ship, InvGrps.freighter, InvGrps.vehicle, InvGrps.container },
-            HelpText = "What inventories to recharge.")]
+        [Option('c', "inventory-groups", Separator = '+', Max = 5, Default = new InvGrps[] { InvGrps.exosuit, InvGrps.ship, InvGrps.multitool, InvGrps.freighter, InvGrps.vehicle},
+            HelpText = "Which inventories to recharge.")]
         public IEnumerable<InvGrps> Groups { get; set; }
     }
 
@@ -269,7 +269,7 @@ namespace nmssavetool
     public class RefurbishOptions : UpdateOptions
     {
         [Option('c', "inventory-groups", Separator = '+', Max = 5, Default = new InvGrps[] { InvGrps.exosuit, InvGrps.ship, InvGrps.multitool, InvGrps.freighter, InvGrps.vehicle, InvGrps.container },
-            HelpText = "What inventories to refurbish.")]
+            HelpText = "Which inventories to refurbish.")]
         public IEnumerable<InvGrps> Groups { get; set; }
     }
 

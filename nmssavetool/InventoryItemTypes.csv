@@ -219,7 +219,7 @@ Id,Name,Category,IsRechargeable,DefaultAmount,MaxAmount
 ^HOT1,Coolant Network Sigma,SUITTECH,TRUE,80,80
 ^HOT2,Coolant Network Tau,SUITTECH,TRUE,80,80
 ^HOT3,Coolant Network Theta,SUITTECH,TRUE,80,80
-^HYPERDRIVE,Hyperdrive,SHIPTECH,FALSE,5,5
+^HYPERDRIVE,Hyperdrive,SHIPTECH,TRUE,5,5
 ^JET1,Jetpack,SUITTECH,FALSE,1,1
 ^JETBOOST1,Jetpack Boost Sigma,SUITTECH,FALSE,-1,100
 ^JETBOOST2,Jetpack Boost Tau,SUITTECH,FALSE,-1,100

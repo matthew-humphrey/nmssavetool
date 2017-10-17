@@ -447,7 +447,7 @@ This command will "recharge" these items back to their full capacity.
 
 nmssavetool
 
-  -c, --inventory-groups    (Default: exosuit ship freighter vehicle container) What inventories to recharge.
+  -c, --inventory-groups    (Default: exosuit ship multitool freighter vehicle) Which inventories to recharge.
 
   -b, --backup-dir          If provided, will write the selected game-save to a decrypted JSON file in the
                             specified directory.
@@ -470,7 +470,7 @@ nmssavetool
 ```
   > nmssavetool recharge -g 1 -c ship+exosuit
 ```
-Recharges exosuit and ship technologies for game save slot 1.
+Recharges technologies in default inventories for game save slot 1.
 
 ---
 ### refill
@@ -483,7 +483,7 @@ This command has no effect on technology items.
 
 nmssavetool
 
-  -c, --inventory-groups    (Default: exosuit ship freighter vehicle container) What inventories to refill.
+  -c, --inventory-groups    (Default: exosuit ship freighter vehicle container) Which inventories to refill.
 
   -b, --backup-dir          If provided, will write the selected game-save to a decrypted JSON file in the
                             specified directory.
@@ -517,7 +517,7 @@ Refurbish is equivalent to running the recharge, refill, and repair commands ind
 
 nmssavetool
 
-  -c, --inventory-groups    (Default: exosuit ship multitool freighter vehicle container) What inventories to
+  -c, --inventory-groups    (Default: exosuit ship multitool freighter vehicle container) Which inventories to
                             refurbish.
 
   -b, --backup-dir          If provided, will write the selected game-save to a decrypted JSON file in the
@@ -823,6 +823,14 @@ Set player units to 2 billion.
 
 ---
 ## Changelog
+
+### 2017-10-16 2.0.1.6 (beta-4)
+* Fixed bug in inventory selection for refill, recharge, and refurbish commands. Program also 
+  now detects if there were any changes to the selected inventories or not, and if not skips
+  update of game save.
+* Fixed incorrect IsRechargeable attribute for HyperDrive in InventoryItemTypes.csv. This was
+  preventing the program from recharging the hyperdrive.
+* Fixed typo in "Vortex Cube" in inventory item CSV file, InventoryItemTypes.csv (H/T Github user jgreely)
 
 ### 2017-10-15 2.0.1.5 (beta-3)
 * Fixed bug preventing correct location of save directory for GoG
