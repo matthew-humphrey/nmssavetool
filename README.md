@@ -6,9 +6,9 @@ Author: [Matthew Humphrey](https://github.com/matthew-humphrey)
 This is a simple tool to allow decoding, encoding, and convenient editing operations
 on saves for the No Man's Sky game.
 
-NMS 1.38 users will need to use [the latest beta version](https://github.com/matthew-humphrey/nmssavetool/releases/tag/v2.0.1.6-beta-4)
+NMS 1.38 users will need to use the [latest beta version](https://github.com/matthew-humphrey/nmssavetool/releases/tag/v2.0.1.6-beta-4)
 
-NMS 1.37 and earlier can use the [Latest release version](https://github.com/matthew-humphrey/nmssavetool/releases/latest)
+NMS 1.37 and earlier can use the [latest release version](https://github.com/matthew-humphrey/nmssavetool/releases/latest)
 
 ---
 ## Usage
