@@ -149,7 +149,7 @@ namespace nmssavetool
                 {
                     _gsm.WriteSaveFile(_gs, opt.GameSlot);
 
-                    Log("Wrote latest game save for game slot \"{0}\"", opt.GameSlot);
+                    Log("Wrote latest game save for game slot {0}", opt.GameSlot);
                 }
                 catch (Exception x)
                 {
@@ -311,199 +311,147 @@ namespace nmssavetool
             return false;
         }
 
-        private bool RunRecharge(RechargeOptions opt)
+        private IList<Inventory> OptInvGrpsToInventories(IEnumerable<InvGrps> invGrps)
         {
-            var groups = new HashSet<InvGrps>(opt.Groups);
-            var processedGroups = new List<InvGrps>(groups.Count);
+            var groups = new HashSet<InvGrps>(invGrps);
+            var inventories = new List<Inventory>();
+
+            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.ship))
+            {
+                inventories.Add(_gs.InventoryPrimaryShipGeneral);
+                inventories.Add(_gs.InventoryPrimaryShipTechOnly);
+            }
 
             if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.exosuit))
             {
-                _gs.InventoryExosuitGeneral.Recharge();
-                _gs.InventoryExosuitTechOnly.Recharge();
-                processedGroups.Add(InvGrps.exosuit);
-            }
-
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.freighter))
-            {
-                _gs.InventoryFreighterGeneral.Recharge();
-                _gs.InventoryFreighterTechOnly.Recharge();
-                processedGroups.Add(InvGrps.freighter);
+                inventories.Add(_gs.InventoryExosuitGeneral);
+                inventories.Add(_gs.InventoryExosuitCargo);
+                inventories.Add(_gs.InventoryExosuitTechOnly);
             }
 
             if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.multitool))
             {
-                _gs.InventoryMultitool.Recharge();
-                processedGroups.Add(InvGrps.multitool);
+                inventories.Add(_gs.InventoryMultitool);
             }
 
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.ship))
+            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.freighter))
             {
-                _gs.InventoryPrimaryShipGeneral.Recharge();
-                _gs.InventoryPrimaryShipTechOnly.Recharge();
-                processedGroups.Add(InvGrps.ship);
+                inventories.Add(_gs.InventoryFreighterGeneral);
+                inventories.Add(_gs.InventoryFreighterTechOnly);
             }
 
             if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.vehicle))
             {
-                _gs.InventoryPrimaryVehicle.Recharge();
-                processedGroups.Add(InvGrps.vehicle);
+                inventories.Add(_gs.InventoryPrimaryVehicle);
             }
 
-            Log("Recharged items in the following inventory groups: {0}.", string.Join(", ", processedGroups));
-            return true;
+            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.container))
+            {
+                foreach (var inventory in _gs.InventoryContainers)
+                {
+                    inventories.Add(inventory);
+                }
+            }
+
+            return inventories;
+        }
+
+        private bool RunRecharge(RechargeOptions opt)
+        {
+            var inventories = OptInvGrpsToInventories(opt.Groups);
+            var updatedInventories = new List<Inventory>(inventories.Count);
+
+            foreach (var inventory in inventories)
+            {
+                if (inventory.Recharge())
+                {
+                    updatedInventories.Add(inventory);
+                }
+            }
+
+            if (updatedInventories.Count != 0)
+            {
+                Log("Recharged items in the following inventory groups:\n  {0}.", string.Join("\n  ", updatedInventories));
+                return true;
+            }
+
+            Log("Nothing to recharge in selected inventories");
+            return false;
         }
 
         private bool RunRefill(RefillOptions opt)
         {
-            var groups = new HashSet<InvGrps>(opt.Groups);
-            var processedGroups = new List<InvGrps>(groups.Count);
+            var inventories = OptInvGrpsToInventories(opt.Groups);
+            var updatedInventories = new List<Inventory>(inventories.Count);
 
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.container))
+            foreach (var inventory in inventories)
             {
-                foreach (var inventory in _gs.InventoryContainers)
+                if (inventory.Refill())
                 {
-                    inventory.Refill();
+                    updatedInventories.Add(inventory);
                 }
-                processedGroups.Add(InvGrps.container);
             }
 
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.exosuit))
+            if (updatedInventories.Count != 0)
             {
-                _gs.InventoryExosuitGeneral.Refill();
-                _gs.InventoryExosuitCargo.Refill();
-                processedGroups.Add(InvGrps.exosuit);
+                Log("Refilled items in the following inventory groups:\n  {0}.", string.Join("\n  ", updatedInventories));
+                return true;
             }
 
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.freighter))
-            {
-                _gs.InventoryFreighterGeneral.Refill();
-                processedGroups.Add(InvGrps.freighter);
-            }
-
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.ship))
-            {
-                _gs.InventoryPrimaryShipGeneral.Refill();
-                processedGroups.Add(InvGrps.ship);
-            }
-
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.vehicle))
-            {
-                _gs.InventoryPrimaryVehicle.Refill();
-                processedGroups.Add(InvGrps.vehicle);
-            }
-
-            Log("Refilled items in the following inventory groups: {0}.", string.Join(", ", processedGroups));
-            return true;
+            Log("Nothing to refill in selected inventories");
+            return false;
         }
 
         private bool RunRepair(RepairOptions opt)
         {
-            var groups = new HashSet<InvGrps>(opt.Groups);
-            var processedGroups = new List<InvGrps>(groups.Count);
+            var inventories = OptInvGrpsToInventories(opt.Groups);
+            var updatedInventories = new List<Inventory>(inventories.Count);
 
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.exosuit))
+            foreach (var inventory in inventories)
             {
-                _gs.InventoryExosuitGeneral.Repair();
-                _gs.InventoryExosuitTechOnly.Repair();
-                processedGroups.Add(InvGrps.exosuit);
+                if (inventory.Repair())
+                {
+                    updatedInventories.Add(inventory);
+                }
             }
 
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.freighter))
+            if (updatedInventories.Count != 0)
             {
-                _gs.InventoryFreighterTechOnly.Repair();
-                processedGroups.Add(InvGrps.freighter);
+                Log("Repaired items in the following inventory groups:\n  {0}.", string.Join("\n  ", updatedInventories));
+                return true;
             }
 
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.multitool))
-            {
-                _gs.InventoryMultitool.Repair();
-                processedGroups.Add(InvGrps.multitool);
-            }
-
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.ship))
-            {
-                _gs.InventoryPrimaryShipGeneral.Repair();
-                _gs.InventoryPrimaryShipTechOnly.Repair();
-                processedGroups.Add(InvGrps.ship);
-            }
-
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.vehicle))
-            {
-                _gs.InventoryPrimaryVehicle.Repair();
-                processedGroups.Add(InvGrps.vehicle);
-            }
-
-            Log("Repaired items in the following inventory groups: {0}.", string.Join(", ", processedGroups));
-            return true;
+            Log("Nothing to repair in selected inventories");
+            return false;
         }
 
         private bool RunRefurbish(RefurbishOptions opt)
         {
-            var groups = new HashSet<InvGrps>(opt.Groups);
-            var processedGroups = new List<InvGrps>(groups.Count);
+            var inventories = OptInvGrpsToInventories(opt.Groups);
+            var updatedInventories = new List<Inventory>(inventories.Count);
 
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.container))
+            foreach (var inventory in inventories)
             {
-                foreach (var inventory in _gs.InventoryContainers)
+                bool changedSomething = false;
+
+                changedSomething |= inventory.Repair();
+                changedSomething |= inventory.Recharge();
+                changedSomething |= inventory.Refill();
+
+                if (changedSomething)
                 {
-                    inventory.Refill();
+                    updatedInventories.Add(inventory);
                 }
-                processedGroups.Add(InvGrps.container);
             }
 
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.exosuit))
+            if (updatedInventories.Count != 0)
             {
-                _gs.InventoryExosuitGeneral.Recharge();
-                _gs.InventoryExosuitGeneral.Repair();
-                _gs.InventoryExosuitGeneral.Refill();
-
-                _gs.InventoryExosuitTechOnly.Recharge();
-                _gs.InventoryExosuitTechOnly.Repair();
-
-                processedGroups.Add(InvGrps.exosuit);
+                Log("Refurbished items in the following inventory groups:\n  {0}.", string.Join(",\n  ", updatedInventories));
+                return true;
             }
 
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.freighter))
-            {
-                _gs.InventoryFreighterGeneral.Refill();
-
-                _gs.InventoryFreighterTechOnly.Recharge();
-                _gs.InventoryFreighterTechOnly.Repair();
-
-                processedGroups.Add(InvGrps.freighter);
-            }
-
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.multitool))
-            {
-                _gs.InventoryMultitool.Recharge();
-                _gs.InventoryMultitool.Repair();
-
-                processedGroups.Add(InvGrps.multitool);
-            }
-
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.ship))
-            {
-                _gs.InventoryPrimaryShipGeneral.Recharge();
-                _gs.InventoryPrimaryShipGeneral.Refill();
-                _gs.InventoryPrimaryShipGeneral.Repair();
-
-                _gs.InventoryPrimaryShipTechOnly.Recharge();
-                _gs.InventoryPrimaryShipTechOnly.Repair();
-
-                processedGroups.Add(InvGrps.ship);
-            }
-
-            if (groups.Contains(InvGrps.all) || groups.Contains(InvGrps.vehicle))
-            {
-                _gs.InventoryPrimaryVehicle.Recharge();
-                _gs.InventoryPrimaryVehicle.Refill();
-                _gs.InventoryPrimaryVehicle.Repair();
-
-                processedGroups.Add(InvGrps.vehicle);
-            }
-
-            Log("Refurbished items in the following inventory groups: {0}.", string.Join(", ", processedGroups));
-            return true;
+            Log("Nothing to refurbish in selected inventories");
+            return false;
         }
 
         private bool RunRelocate(RelocateOptions opt)
