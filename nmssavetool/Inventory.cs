@@ -118,7 +118,7 @@ namespace nmssavetool
 
         public bool IsSlotAtPosEmpty(int x, int y)
         {
-            return IsSlotAtPosValid(x, y) && (_slots[x, y] == null);
+            return IsValidSlotPos(x, y) && _validSlots[x, y] && (_slots[x, y] == null);
         }
         
         public bool IsSlotAtPosOccupied(int x, int y)
@@ -748,7 +748,7 @@ namespace nmssavetool
             {
                 for (int col = Width-1; col >= 0; col--)
                 {
-                    if (_slots[col, row] == null)
+                    if (IsSlotAtPosEmpty(col, row))
                     {
                         x = col;
                         y = row;
